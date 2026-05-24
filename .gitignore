@@ -1,0 +1,7 @@
+node_modules/
+accounts.json
+sessions.json
+saves.json
+feedback.json
+.env
+*.log

@@ -1,0 +1,31 @@
+{
+  "player": {
+    "move": {
+      "outPath": "C:\\Users\\Rasmu\\Desktop\\hulkzombie\\public\\images\\player-move-sheet.png",
+      "frameWidth": 258,
+      "frameHeight": 220,
+      "frameCount": 20
+    },
+    "idle": {
+      "outPath": "C:\\Users\\Rasmu\\Desktop\\hulkzombie\\public\\images\\player-idle-sheet.png",
+      "frameWidth": 253,
+      "frameHeight": 216,
+      "frameCount": 20
+    }
+  },
+  "zombie": {
+    "move": {
+      "outPath": "C:\\Users\\Rasmu\\Desktop\\hulkzombie\\public\\images\\zombie-move-sheet.png",
+      "frameWidth": 288,
+      "frameHeight": 311,
+      "frameCount": 17
+    },
+    "idle": {
+      "outPath": "C:\\Users\\Rasmu\\Desktop\\hulkzombie\\public\\images\\zombie-idle-sheet.png",
+      "frameWidth": 241,
+      "frameHeight": 222,
+      "frameCount": 17
+    }
+  },
+  "credit": "Riley Gombart — OpenGameArt.org (CC-BY 3.0)"
+}

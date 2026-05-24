@@ -1,0 +1,23 @@
+{
+  "hand-grip-top": {
+    "path": "images/hand-grip-top.png",
+    "width": 36,
+    "height": 24,
+    "anchorX": 18,
+    "anchorY": 16
+  },
+  "hand-grip-bottom": {
+    "path": "images/hand-grip-bottom.png",
+    "width": 36,
+    "height": 24,
+    "anchorX": 18,
+    "anchorY": 8
+  },
+  "hand-grip-pistol": {
+    "path": "images/hand-grip-pistol.png",
+    "width": 26,
+    "height": 28,
+    "anchorX": 13,
+    "anchorY": 14
+  }
+}

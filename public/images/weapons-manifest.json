@@ -1,0 +1,42 @@
+{
+  "pistol": {
+    "id": "pistol",
+    "path": "images/weapon-pistol.png",
+    "width": 120,
+    "height": 56,
+    "gripX": 34,
+    "gripY": 28,
+    "muzzleX": 108,
+    "muzzleY": 28
+  },
+  "smg": {
+    "id": "smg",
+    "path": "images/weapon-smg.png",
+    "width": 176,
+    "height": 78,
+    "gripX": 56,
+    "gripY": 38,
+    "muzzleX": 164,
+    "muzzleY": 36
+  },
+  "shotgun": {
+    "id": "shotgun",
+    "path": "images/weapon-shotgun.png",
+    "width": 188,
+    "height": 76,
+    "gripX": 58,
+    "gripY": 38,
+    "muzzleX": 176,
+    "muzzleY": 36
+  },
+  "rifle": {
+    "id": "rifle",
+    "path": "images/weapon-rifle.png",
+    "width": 204,
+    "height": 76,
+    "gripX": 62,
+    "gripY": 38,
+    "muzzleX": 192,
+    "muzzleY": 36
+  }
+}

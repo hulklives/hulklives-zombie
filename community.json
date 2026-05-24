@@ -1,0 +1,14 @@
+{
+  "giveaway": {
+    "showComingSoon": true
+  },
+  "featured": {
+    "active": false,
+    "displayName": "",
+    "gameName": "",
+    "rankLabel": "Featured Survivor",
+    "rankEmoji": "⭐",
+    "tiktokHandle": "",
+    "tiktokUrl": ""
+  }
+}
