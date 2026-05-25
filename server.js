@@ -5,8 +5,11 @@ const path = require("path");
 const crypto = require("crypto");
 const {
   MAX_SAVE_BODY_BYTES,
+  clampInt,
   createRateLimiter,
+  getAdminSkillPointBonus,
   getLevelFromXp,
+  isSavePlausible,
   mergePlayerSaveSecure,
   normalizeNickname,
   repairSaveIntegrity,
@@ -21,10 +24,12 @@ const {
   getCustomLeaderboardRole,
   getLeaderboardRole,
   getPublicRuntimeConfig,
+  hasAppliedSkillPointGrant,
   isGameAdminName,
   isIpBlocked,
   isUsernameBlocked,
   loadAdminConfig,
+  markSkillPointGrantApplied,
   setPlayerLeaderboardRole,
   unbanIp,
   unbanUsername,
@@ -161,6 +166,68 @@ async function loadSaves() {
 
 function saveSaves() {
   storage.writeJson("saves", saves);
+}
+
+const STARTUP_SKILL_POINT_GRANTS = [
+  { id: "hulklives-300k-20260525", username: "hulklives", amount: 300000 }
+];
+
+function grantPlayerSkillPoints(targetName, amount, mode = "set") {
+  const normalized = normalizeNickname(targetName);
+  if (!normalized) {
+    return { ok: false, error: "Enter a player name." };
+  }
+
+  const targetAmount = clampInt(amount, 1, 999999999);
+  const { key } = ensureSaveForAccount(normalized);
+  const save = { ...(saves[key] || sanitizeSaveShape({})) };
+  const currentHeld = clampInt(save.skillPoints, 0, 999999999);
+  const currentBonus = getAdminSkillPointBonus(save);
+
+  let nextHeld = currentHeld;
+  let nextBonus = currentBonus;
+
+  if (mode === "add") {
+    nextHeld = currentHeld + targetAmount;
+    nextBonus = currentBonus + targetAmount;
+  } else {
+    nextHeld = Math.max(currentHeld, targetAmount);
+    nextBonus = currentBonus + Math.max(0, nextHeld - currentHeld);
+  }
+
+  save.skillPoints = nextHeld;
+  save.adminSpBonus = nextBonus;
+
+  const sanitized = sanitizeSaveShape(save);
+  if (!isSavePlausible(sanitized, sanitized)) {
+    return { ok: false, error: "Could not grant skill points." };
+  }
+
+  saves[key] = sanitized;
+  saveSaves();
+  return {
+    ok: true,
+    username: key,
+    skillPoints: sanitized.skillPoints,
+    granted: Math.max(0, sanitized.skillPoints - currentHeld)
+  };
+}
+
+async function applyStartupSkillPointGrants() {
+  for (const grant of STARTUP_SKILL_POINT_GRANTS) {
+    if (hasAppliedSkillPointGrant(grant.id)) continue;
+
+    const result = grantPlayerSkillPoints(grant.username, grant.amount, "set");
+    if (!result.ok) {
+      console.warn(`Startup skill point grant failed for ${grant.username}: ${result.error}`);
+      continue;
+    }
+
+    markSkillPointGrantApplied(grant.id);
+    console.log(
+      `Startup skill point grant applied for ${result.username}: ${result.skillPoints} SP (+${result.granted})`
+    );
+  }
 }
 
 function computeRankScore(data) {
@@ -486,6 +553,7 @@ function buildAdminPlayerRow(name, data) {
     kills: Number(save.kills || 0),
     bestWave: Number(save.bestWave || 0),
     totalXp: Number(save.totalXp || 0),
+    skillPoints: Number(save.skillPoints || 0),
     lastPlayed: Number(save.lastPlayed || 0),
     leaderboardHidden: Boolean(save.leaderboardHidden),
     banned: isUsernameBlocked(name),
@@ -574,6 +642,28 @@ app.post("/api/admin/players/reset-save", requireAuthAndAccess, requireGameAdmin
   saveSaves();
   console.log(`Admin reset save for ${targetName}`);
   res.json({ ok: true, username: key });
+});
+
+app.post("/api/admin/players/grant-skill-points", requireAuthAndAccess, requireGameAdmin, (req, res) => {
+  if (!rateLimitAdmin(`${getClientKey(req)}:admin-grant-sp`)) {
+    return res.status(429).json({ error: "Too many admin requests." });
+  }
+
+  const targetName = normalizeNickname(req.body?.username);
+  const amount = clampInt(req.body?.amount, 1, 999999999);
+  const mode = String(req.body?.mode || "set").trim().toLowerCase() === "add" ? "add" : "set";
+
+  if (!targetName) {
+    return res.status(400).json({ error: "Enter a player name." });
+  }
+
+  const result = grantPlayerSkillPoints(targetName, amount, mode);
+  if (!result.ok) {
+    return res.status(400).json({ error: result.error });
+  }
+
+  console.log(`Admin granted ${result.granted} SP to ${result.username} (${result.skillPoints} total)`);
+  res.json(result);
 });
 
 app.post("/api/admin/players/leaderboard-hidden", requireAuthAndAccess, requireGameAdmin, (req, res) => {
@@ -773,6 +863,7 @@ async function startServer() {
   await loadAuthStore();
   await loadAdminConfig();
   await loadSaves();
+  await applyStartupSkillPointGrants();
   await loadFeedbackStore();
   ensureAdminConfigFile();
 

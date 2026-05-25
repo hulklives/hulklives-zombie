@@ -87,6 +87,7 @@ function handleAdminPanelClick(event) {
     } else if (action === "ban") adminBanPlayer(username);
     else if (action === "save-role") adminSetPlayerLeaderboardRole(username, playerBtn);
     else if (action === "clear-role") adminSetPlayerLeaderboardRole(username, null, true);
+    else if (action === "grant-sp") adminGrantSkillPoints(username, playerBtn);
     return;
   }
 
@@ -382,6 +383,7 @@ function renderAdminPlayers(players) {
     <span class="lb-stat">Lv ${Number(player.level) || 1}</span>
     <span class="lb-stat">W${Number(player.bestWave) || 0}</span>
     <span class="lb-stat">${Number(player.kills) || 0} K</span>
+    <span class="lb-stat">${Number(player.skillPoints) || 0} SP</span>
   </div>
   <div class="admin-player-role-row">
     <div class="admin-player-role-current">Leaderboard shows: <strong>${escapeHtml(effectiveRole)}</strong></div>
@@ -397,6 +399,10 @@ function renderAdminPlayers(players) {
   <details class="admin-player-more">
     <summary>Moderation</summary>
     <div class="admin-player-actions">
+      <div class="admin-inline-actions admin-player-grant-row">
+        <input type="number" id="admin-sp-input-${encodedName}" class="admin-player-sp-input" min="1" max="999999999" step="1" value="300000" data-username="${encodedName}" aria-label="Skill points amount">
+        <button type="button" class="menu-primary-btn" data-admin-player-action="grant-sp" data-username="${encodedName}">Set SP</button>
+      </div>
       <button type="button" class="menu-secondary-btn" data-admin-player-action="reset" data-username="${encodedName}">Reset save</button>
       <button type="button" class="menu-secondary-btn" data-admin-player-action="toggle-lb" data-username="${encodedName}" data-hidden="${hideNext}">${hideLabel}</button>
       <button type="button" class="menu-secondary-btn danger" data-admin-player-action="ban" data-username="${encodedName}">Ban account</button>
@@ -618,6 +624,40 @@ async function saveAdminLiveSettings() {
     await loadAdminState({ successMessage: "Live settings saved." });
   } catch (error) {
     notifyAdminStatus("Could not reach the server.", "error");
+  }
+}
+
+async function adminGrantSkillPoints(username, buttonEl) {
+  if (!requireAdminAction()) return;
+
+  const card = buttonEl?.closest?.(".admin-player-card");
+  const input = card?.querySelector(".admin-player-sp-input");
+  const amount = Math.max(1, Math.floor(Number(input?.value) || 0));
+  if (!amount) {
+    setAdminStatus("Enter a valid skill point amount.", "error");
+    return;
+  }
+
+  if (!confirm(`Set ${username} to ${amount.toLocaleString("sv-SE")} skill points?`)) return;
+
+  setAdminStatus(`Granting skill points to ${username}...`);
+  try {
+    const response = await adminFetch("/api/admin/players/grant-skill-points", {
+      method: "POST",
+      body: JSON.stringify({ username, amount, mode: "set" })
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setAdminStatus(payload.error || "Could not grant skill points.", "error");
+      return;
+    }
+    setAdminStatus(
+      `${username} now has ${Number(payload.skillPoints || 0).toLocaleString("sv-SE")} SP.`,
+      "success"
+    );
+    await loadAdminPlayers();
+  } catch (error) {
+    setAdminStatus("Could not reach the server.", "error");
   }
 }
 

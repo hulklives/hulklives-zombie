@@ -24,7 +24,8 @@ const DEFAULT_ADMIN_CONFIG = {
   defaultLeaderboardRole: "Survivor",
   leaderboardRoles: {
     hulklives: "Owner"
-  }
+  },
+  appliedSkillPointGrants: []
 };
 
 let adminConfig = normalizeAdminConfig(DEFAULT_ADMIN_CONFIG);
@@ -205,8 +206,23 @@ function getAdminConfigSnapshot() {
     bannedIps: [...adminConfig.bannedIps],
     defaultLeaderboardRole: getDefaultLeaderboardRole(),
     leaderboardRoles: { ...adminConfig.leaderboardRoles },
+    appliedSkillPointGrants: [...adminConfig.appliedSkillPointGrants],
     reservedBlockedUsernames: [...DEFAULT_BLOCKED_USERNAMES]
   };
+}
+
+function hasAppliedSkillPointGrant(grantId) {
+  const id = String(grantId || "").trim().slice(0, 64);
+  if (!id) return false;
+  return adminConfig.appliedSkillPointGrants.includes(id);
+}
+
+function markSkillPointGrantApplied(grantId) {
+  const id = String(grantId || "").trim().slice(0, 64);
+  if (!id || adminConfig.appliedSkillPointGrants.includes(id)) return false;
+  adminConfig.appliedSkillPointGrants.push(id);
+  saveAdminConfig();
+  return true;
 }
 
 function updateAnnouncement(patch) {
@@ -322,7 +338,9 @@ module.exports = {
   isGameAdminName,
   isIpBlocked,
   isUsernameBlocked,
+  hasAppliedSkillPointGrant,
   loadAdminConfig,
+  markSkillPointGrantApplied,
   saveAdminConfig,
   setPlayerLeaderboardRole,
   unbanIp,

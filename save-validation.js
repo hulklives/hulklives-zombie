@@ -82,14 +82,18 @@ function computeTheoreticalMaxEarnedSkillPoints(kills, bestWave) {
   return fromKills + legacyKillSp + fromBosses + fromEvents + starterBuffer;
 }
 
+function getAdminSkillPointBonus(data) {
+  return clampInt(data?.adminSpBonus, 0, 999999999);
+}
+
 function computeSkillPointBudget(existing, merged) {
   const existingSpent = computeSpentSkillPoints(existing);
   const existingHeld = clampInt(existing.skillPoints, 0, 999999999);
   const theoretical = computeTheoreticalMaxEarnedSkillPoints(merged.kills, merged.bestWave);
+  const adminBonus = Math.max(getAdminSkillPointBonus(existing), getAdminSkillPointBonus(merged));
 
-  return Math.max(
-    Math.ceil(theoretical * 1.6),
-    existingSpent + existingHeld + 100
+  return (
+    Math.max(Math.ceil(theoretical * 1.6), existingSpent + existingHeld + 100) + adminBonus
   );
 }
 
@@ -169,6 +173,7 @@ function sanitizeSaveShape(data) {
     score: clampInt(data.score, 0, kills * 20),
     bestWave,
     skillPoints,
+    adminSpBonus: getAdminSkillPointBonus(data),
     nextSkillPointKill: clampInt(data.nextSkillPointKill, SKILL_POINT_KILL_INTERVAL, 999999999),
     totalXp,
     hp: clampInt(data.hp, 0, maxHp),
@@ -245,6 +250,7 @@ function mergePlayerSaveSecure(existing, incoming) {
     score: Math.max(clampInt(ex.score, 0, 999999999), clampInt(inc.score, 0, 999999999)),
     bestWave: Math.max(clampInt(ex.bestWave, 0, 999999999), clampInt(inc.bestWave, 0, 999999999)),
     skillPoints: clampInt(inc.skillPoints, 0, 999999999),
+    adminSpBonus: Math.max(getAdminSkillPointBonus(ex), getAdminSkillPointBonus(inc)),
     nextSkillPointKill: Math.max(
       clampInt(ex.nextSkillPointKill, SKILL_POINT_KILL_INTERVAL, 999999999),
       clampInt(inc.nextSkillPointKill, SKILL_POINT_KILL_INTERVAL, 999999999)
@@ -387,6 +393,7 @@ module.exports = {
   WEAPON_IDS,
   clampInt,
   computeSkillPointBudget,
+  getAdminSkillPointBonus,
   computeSpentSkillPoints,
   createRateLimiter,
   filterValidAchievements,
