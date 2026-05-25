@@ -5,6 +5,7 @@ const ONLINE_POLL_MS = 12000;
 let onlineHeartbeatTimer = null;
 let onlinePollTimer = null;
 let onlineReporting = false;
+let onlineReady = false;
 
 function escapeOnlineHtml(value) {
   return String(value || "")
@@ -97,9 +98,15 @@ function renderOnlinePlayers(players) {
     .join("");
 }
 
+function showOnlinePlayersLoading() {
+  const list = document.getElementById("online-players-list");
+  if (!list) return;
+  list.innerHTML = '<div class="online-players-empty">Loading online players...</div>';
+}
+
 async function sendOnlinePresence() {
   const fetchAuth = getOnlineAuthFetch();
-  if (!fetchAuth || !hasOnlineAuth() || onlineReporting) return false;
+  if (!fetchAuth || !hasOnlineAuth() || onlineReporting) return null;
 
   onlineReporting = true;
   try {
@@ -107,9 +114,13 @@ async function sendOnlinePresence() {
       method: "POST",
       body: JSON.stringify(getOnlinePresencePayload())
     });
-    return response.ok;
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      return { ok: false, status: response.status, error: payload.error || "Could not update presence." };
+    }
+    return { ok: true, players: payload.players || [] };
   } catch (error) {
-    return false;
+    return { ok: false, status: 0, error: "Could not reach server." };
   } finally {
     onlineReporting = false;
   }
@@ -125,25 +136,49 @@ async function refreshOnlinePlayers(force = false) {
   }
 
   setOnlinePlayersLoggedIn();
+  if (force) {
+    showOnlinePlayersLoading();
+  }
 
   if (force) {
-    await sendOnlinePresence();
+    const presenceResult = await sendOnlinePresence();
+    if (presenceResult?.ok) {
+      renderOnlinePlayers(presenceResult.players || []);
+      return;
+    }
+    if (presenceResult?.status === 401) {
+      setOnlinePlayersLoggedOut();
+      return;
+    }
   }
 
   try {
     const response = await fetchAuth("/api/presence/online");
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
-      if (response.status === 401) setOnlinePlayersLoggedOut();
+      if (response.status === 401) {
+        setOnlinePlayersLoggedOut();
+        return;
+      }
+      const list = document.getElementById("online-players-list");
+      if (list) {
+        list.innerHTML = `<div class="online-players-empty">${escapeOnlineHtml(payload.error || "Online list unavailable right now.")}</div>`;
+      }
       return;
     }
     renderOnlinePlayers(payload.players || []);
   } catch (error) {
-    // ignore transient failures
+    const list = document.getElementById("online-players-list");
+    if (list) {
+      list.innerHTML = '<div class="online-players-empty">Online list unavailable right now.</div>';
+    }
   }
 }
 
 function initOnlinePlayers() {
+  if (onlineReady) return;
+  onlineReady = true;
+
   if (onlineHeartbeatTimer) clearInterval(onlineHeartbeatTimer);
   if (onlinePollTimer) clearInterval(onlinePollTimer);
 
@@ -154,12 +189,11 @@ function initOnlinePlayers() {
   onlinePollTimer = setInterval(() => {
     refreshOnlinePlayers(false);
   }, ONLINE_POLL_MS);
-
-  refreshOnlinePlayers(true);
 }
 
 window.reportOnlinePresence = () => sendOnlinePresence();
 window.refreshOnlinePlayers = (force = true) => refreshOnlinePlayers(force);
+window.initOnlinePlayers = initOnlinePlayers;
 
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", initOnlinePlayers);

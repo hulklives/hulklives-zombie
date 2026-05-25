@@ -4,7 +4,6 @@ let adminPlayersCache = [];
 let adminReportsCache = [];
 let adminReportFilter = "open";
 let adminStateCache = null;
-let adminReturnToStartMenu = false;
 let adminDefaultLeaderboardRole = "Survivor";
 
 const ADMIN_ROLE_PRESETS = [
@@ -896,15 +895,9 @@ async function openAdminPanel(tab = "announcement") {
   }
 
   const modal = document.getElementById("admin-modal");
-  const startMenu = document.getElementById("start-menu");
   if (!modal) return;
 
   bindAdminPanelEvents();
-  adminReturnToStartMenu = !!(startMenu && startMenu.style.display !== "none");
-  if (startMenu) {
-    startMenu.dataset.adminPrevDisplay = startMenu.style.display || "";
-    startMenu.style.display = "none";
-  }
   document.body.classList.add("admin-open");
   adminPanelOpen = true;
   if (typeof pauseForRunModal === "function") pauseForRunModal("admin");
@@ -918,7 +911,6 @@ async function openAdminPanel(tab = "announcement") {
 
 function closeAdminPanel() {
   const modal = document.getElementById("admin-modal");
-  const startMenu = document.getElementById("start-menu");
   if (!modal) return;
 
   const wasOpen = modal.classList.contains("open");
@@ -928,10 +920,18 @@ function closeAdminPanel() {
   document.body.classList.remove("admin-open");
   setAdminStatus("");
 
-  if (adminReturnToStartMenu && startMenu) {
-    startMenu.style.display = startMenu.dataset.adminPrevDisplay || "flex";
+  if (
+    wasOpen &&
+    typeof gameRunning !== "undefined" &&
+    !gameRunning &&
+    typeof isGameOverVisible === "function" &&
+    !isGameOverVisible() &&
+    typeof isNicknameScreenVisible === "function" &&
+    !isNicknameScreenVisible() &&
+    typeof showStartMenu === "function"
+  ) {
+    showStartMenu();
   }
-  adminReturnToStartMenu = false;
 
   if (wasOpen && typeof resumeFromRunModal === "function") resumeFromRunModal("admin");
 }

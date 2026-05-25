@@ -2185,6 +2185,7 @@ async function completeLogin(username, token) {
   if (typeof refreshGlobalChat === "function") refreshGlobalChat();
   if (typeof refreshOnlinePlayers === "function") refreshOnlinePlayers(true);
   enterMainMenuFlow();
+  ensureRenderLoop();
 }
 
 async function submitAuth() {
@@ -2377,6 +2378,7 @@ function updateStartMenuUI() {
 
 function showStartMenu() {
   if (startMenuOverlay) startMenuOverlay.style.display = "flex";
+  ensureRenderLoop();
   updateStartMenuUI();
   updateShopControls();
 }
@@ -6043,9 +6045,7 @@ async function beginRun(mode = "campaign") {
 
 
   if (!animationFrameId) {
-
-    animationFrameId = requestAnimationFrame(loop);
-
+    ensureRenderLoop();
   }
 
   if (typeof reportOnlinePresence === "function") reportOnlinePresence();
@@ -7263,6 +7263,11 @@ function loop() {
   animationFrameId = requestAnimationFrame(loop);
 }
 
+function ensureRenderLoop() {
+  if (!c || !ctx || animationFrameId) return;
+  animationFrameId = requestAnimationFrame(loop);
+}
+
 
 
 if (c) {
@@ -7557,6 +7562,16 @@ async function init() {
     if (typeof refreshGlobalChat === "function") refreshGlobalChat();
     if (typeof refreshOnlinePlayers === "function") refreshOnlinePlayers(true);
     enterMainMenuFlow();
+    if (
+      !gameRunning &&
+      !isGameOverVisible() &&
+      !isNicknameScreenVisible() &&
+      !isStartMenuVisible() &&
+      !isTutorialVisible()
+    ) {
+      showStartMenu();
+    }
+    ensureRenderLoop();
   } else {
     hideCenterHud();
     applyArenaTheme();
