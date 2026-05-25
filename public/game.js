@@ -829,6 +829,7 @@ function setSfxVolumeSetting(value) {
 function openSettingsMenu() {
   const modal = document.getElementById("settings-modal");
   if (!modal) return;
+  if (isStartMenuVisible()) hideStartMenu();
   pauseForRunModal("settings");
   updateSettingsUI();
   modal.classList.add("open");
@@ -844,6 +845,7 @@ function closeSettingsMenu() {
   const wasOpen = modal?.classList.contains("open");
   hideSettingsModal();
   if (wasOpen) resumeFromRunModal("settings");
+  restoreStartMenuAfterModal();
 }
 
 let feedbackCategory = "bug";
@@ -919,6 +921,7 @@ function openFeedbackMenu() {
 
   setFeedbackStatus("");
   updateFeedbackUI();
+  if (isStartMenuVisible()) hideStartMenu();
   modal.classList.add("open");
 
   if (messageEl) {
@@ -937,6 +940,7 @@ function closeFeedbackMenu() {
   hideFeedbackModal();
   feedbackSubmitting = false;
   if (wasOpen) resumeFromRunModal("feedback");
+  restoreStartMenuAfterModal();
 }
 
 async function submitFeedback() {
@@ -1873,6 +1877,7 @@ function updateAchievementsUI() {
 function openAchievementsMenu() {
   const modal = document.getElementById("achievements-modal");
   if (!modal) return;
+  if (isStartMenuVisible()) hideStartMenu();
   pauseForRunModal("achievements");
   updateAchievementsUI();
   updateMonthlyAchievementHUD();
@@ -1884,6 +1889,7 @@ function closeAchievementsMenu() {
   const wasOpen = modal?.classList.contains("open");
   hideAchievementsModal();
   if (wasOpen) resumeFromRunModal("achievements");
+  restoreStartMenuAfterModal();
 }
 
 function getLeaderboardCrownHtml(rank) {
@@ -2410,6 +2416,41 @@ function isAdminPanelVisible() {
   return !!(adminModal?.classList.contains("open") && isOverlayVisible(adminModal));
 }
 
+const START_MENU_MODAL_IDS = [
+  "shop-main-modal",
+  "shop-upgrade-modal",
+  "achievements-modal",
+  "settings-modal",
+  "feedback-modal",
+  "feedback-inbox-modal",
+  "run-modifier-modal"
+];
+
+function isStartMenuSubModalOpen() {
+  return START_MENU_MODAL_IDS.some((id) => {
+    const el = document.getElementById(id);
+    return !!el?.classList.contains("open");
+  });
+}
+
+function shouldShowStartMenuNow() {
+  return !!(
+    authToken &&
+    !gameRunning &&
+    !isGameOverVisible() &&
+    !isTutorialVisible() &&
+    !isNicknameScreenVisible() &&
+    !isAdminPanelVisible() &&
+    !isStartMenuSubModalOpen()
+  );
+}
+
+function restoreStartMenuAfterModal() {
+  if (shouldShowStartMenuNow()) {
+    showStartMenu();
+  }
+}
+
 function syncAuthSidePanels() {
   if (typeof refreshGlobalChat === "function") refreshGlobalChat(true);
   if (typeof refreshOnlinePlayers === "function") refreshOnlinePlayers(true);
@@ -2436,8 +2477,16 @@ function repairUiState() {
     return;
   }
 
-  if (!isAdminPanelVisible()) {
+  if (isStartMenuSubModalOpen()) {
+    hideStartMenu();
+    ensureRenderLoop();
+    return;
+  }
+
+  if (!isAdminPanelVisible() && shouldShowStartMenuNow()) {
     showStartMenu();
+  } else if (!shouldShowStartMenuNow()) {
+    hideStartMenu();
   }
 
   syncAuthSidePanels();
@@ -5672,6 +5721,7 @@ function ensureShopAccessible() {
 
 function openShopMenu() {
   if (!ensureShopAccessible()) return;
+  if (isStartMenuVisible()) hideStartMenu();
 
   const modal = document.getElementById("shop-main-modal");
   if (modal) modal.classList.add("open");
@@ -5684,6 +5734,7 @@ function closeShopMenu() {
   const wasOpen = modal?.classList.contains("open");
   hideShopModal();
   if (wasOpen) resumeFromRunModal("shop");
+  restoreStartMenuAfterModal();
 }
 
 const SHOP_UPGRADE_INFO = {

@@ -18,6 +18,10 @@
 --text-soft:#c8e6d4;
 --shadow-panel:0 18px 48px rgba(0,0,0,0.42);
 --shadow-frame:0 28px 70px rgba(0,0,0,0.55), 0 0 0 1px var(--accent-border);
+--z-menu-modal:100060;
+--z-start-menu:100050;
+--z-admin:100100;
+--z-auth:100200;
 }
 
 .overlay-screen{
@@ -51,7 +55,7 @@ padding:22px 22px 20px;
 }
 
 .modal-layer{
-z-index:10001;
+z-index:var(--z-menu-modal);
 }
 
 .modal-header{
@@ -1549,7 +1553,7 @@ padding:11px 12px;
 }
 
 #shop-main-modal{
-z-index:10001;
+z-index:var(--z-menu-modal);
 }
 
 #shop-main-modal.open{
@@ -1692,7 +1696,7 @@ display:none;
 position:fixed;
 inset:0;
 background:rgba(2,14,8,0.88);
-z-index:10003;
+z-index:calc(var(--z-menu-modal) + 2);
 justify-content:center;
 align-items:center;
 padding:20px;
@@ -2030,7 +2034,7 @@ flex-direction:column;
 justify-content:center;
 align-items:center;
 color:#fff;
-z-index:100200;
+z-index:var(--z-auth);
 text-align:center;
 padding:20px;
 }
@@ -2140,7 +2144,7 @@ radial-gradient(ellipse 90% 55% at 50% 8%, rgba(61,255,168,0.14), transparent 58
 radial-gradient(ellipse 120% 80% at 50% 110%, rgba(0,90,45,0.28), rgba(2,10,6,0.94));
 backdrop-filter:none;
 -webkit-backdrop-filter:none;
-z-index:100050;
+z-index:var(--z-start-menu);
 overflow:hidden;
 }
 
@@ -2250,7 +2254,7 @@ position:absolute;
 inset:0;
 pointer-events:none;
 overflow:hidden;
-z-index:3;
+z-index:0;
 }
 
 .menu-float{
@@ -2277,6 +2281,7 @@ animation:menuHeartFloat 7s ease-in-out infinite;
 
 .start-menu-panel{
 position:relative;
+z-index:2;
 width:100%;
 height:100%;
 flex:1;
@@ -2811,7 +2816,7 @@ display:none;
 position:fixed;
 inset:0;
 background:rgba(2,14,8,0.88);
-z-index:10001;
+z-index:var(--z-menu-modal);
 justify-content:center;
 align-items:center;
 padding:20px;
@@ -2920,7 +2925,7 @@ display:none;
 position:fixed;
 inset:0;
 background:rgba(2,14,8,0.88);
-z-index:10001;
+z-index:var(--z-menu-modal);
 justify-content:center;
 align-items:center;
 padding:20px;
@@ -2972,7 +2977,7 @@ display:none;
 position:fixed;
 inset:0;
 background:rgba(2,14,8,0.88);
-z-index:10001;
+z-index:var(--z-menu-modal);
 justify-content:center;
 align-items:center;
 padding:20px;
@@ -3146,7 +3151,7 @@ display:none;
 position:fixed;
 inset:0;
 background:rgba(2,14,8,0.9);
-z-index:100100;
+z-index:var(--z-admin);
 justify-content:center;
 align-items:center;
 padding:20px;
@@ -3554,7 +3559,7 @@ display:none;
 position:fixed;
 inset:0;
 background:rgba(2,14,8,0.88);
-z-index:10001;
+z-index:var(--z-menu-modal);
 justify-content:center;
 align-items:center;
 padding:20px;
@@ -4564,7 +4569,7 @@ TikTok @hulklives
 </div>
 
 <script src="game-pro.js?v=3"></script>
-<script src="game.js?v=185"></script>
+<script src="game.js?v=186"></script>
 <script src="chat.js?v=2"></script>
 <script src="online.js?v=8"></script>
 <script src="admin-panel.js?v=15"></script>
