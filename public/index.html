@@ -420,80 +420,6 @@ box-shadow:var(--shadow-frame);
 background:#041008;
 }
 
-.canvas-menu{
-position:absolute;
-inset:0;
-z-index:20;
-display:flex;
-align-items:center;
-justify-content:center;
-padding:24px;
-background:
-radial-gradient(ellipse 80% 60% at 50% 40%, rgba(61,255,168,0.12), transparent 62%),
-linear-gradient(180deg, rgba(2,10,6,0.18), rgba(2,10,6,0.72));
-pointer-events:auto;
-}
-
-.canvas-menu[hidden]{
-display:none !important;
-}
-
-.canvas-menu-panel{
-width:min(420px, 92%);
-padding:28px 24px 22px;
-border-radius:18px;
-border:1px solid rgba(61,255,168,0.28);
-background:linear-gradient(165deg, rgba(10,34,20,0.96), rgba(6,18,12,0.94));
-box-shadow:0 24px 60px rgba(0,0,0,0.42), inset 0 0 0 1px rgba(255,255,255,0.04);
-text-align:center;
-}
-
-.canvas-menu-eyebrow{
-margin:0 0 8px;
-font-size:11px;
-font-weight:800;
-letter-spacing:0.16em;
-text-transform:uppercase;
-color:#ffd88a;
-}
-
-.canvas-menu-title{
-margin:0 0 6px;
-font-size:28px;
-font-weight:800;
-color:#d8ffe8;
-}
-
-.canvas-menu-greeting{
-margin:0 0 18px;
-font-size:13px;
-color:var(--text-soft);
-}
-
-.canvas-menu-copy{
-margin:0 0 18px;
-font-size:12px;
-line-height:1.5;
-color:var(--text-muted);
-}
-
-.canvas-menu-actions{
-display:grid;
-grid-template-columns:1fr 1fr;
-gap:10px;
-margin-bottom:14px;
-}
-
-.canvas-menu-actions .menu-primary-btn,
-.canvas-menu-actions .menu-mode-btn{
-width:100%;
-min-height:52px;
-}
-
-.canvas-menu-logout{
-margin-top:4px;
-}
-
 .bomb-attack-hud[hidden]{
 display:none !important;
 }
@@ -4168,19 +4094,6 @@ TikTok @hulklives
 <div id="leaderboard-list"><div class="lb-empty">Loading...</div></div>
 <div id="leaderboard-you"></div>
 </div>
-<div id="canvas-menu" class="canvas-menu" hidden>
-<div class="canvas-menu-panel">
-<p class="canvas-menu-eyebrow">Ready to play</p>
-<h2 class="canvas-menu-title">Start Game</h2>
-<p class="canvas-menu-greeting">Welcome, <span id="canvas-menu-name">Player</span> 💚</p>
-<p class="canvas-menu-copy">Waves Game = waves, XP & leaderboard. Freeplay = practice — no XP, shifting hordes.</p>
-<div class="canvas-menu-actions">
-<button type="button" class="menu-primary-btn" onclick="beginRun('campaign')">Waves Game</button>
-<button type="button" class="menu-mode-btn start-menu-freeplay" onclick="beginRun('freeplay')">Freeplay</button>
-</div>
-<button type="button" class="menu-secondary-btn danger canvas-menu-logout" onclick="logoutAccount()">Log out</button>
-</div>
-</div>
 </div>
 
 <!-- 🔥 RIGHT PANEL -->
@@ -4608,7 +4521,7 @@ TikTok @hulklives
 </div>
 
 <script src="game-pro.js?v=3"></script>
-<script src="game.js?v=177"></script>
+<script src="game.js?v=178"></script>
 <script src="chat.js?v=1"></script>
 <script src="online.js?v=2"></script>
 <script src="admin-panel.js?v=13"></script>

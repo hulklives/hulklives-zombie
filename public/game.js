@@ -2162,7 +2162,6 @@ function showAuthScreen(mode = "login") {
   if (startOverlay) startOverlay.style.display = "flex";
   if (startMenuOverlay) startMenuOverlay.style.display = "none";
   hideTutorialOverlay();
-  syncCanvasMenuVisibility();
   if (playerNameInput) {
     playerNameInput.value = loadSavedName();
     playerNameInput.focus();
@@ -2338,28 +2337,11 @@ function isOverlayVisible(el) {
 }
 
 function isStartMenuVisible() {
-  return isOverlayVisible(document.getElementById("canvas-menu"));
+  return isOverlayVisible(startMenuOverlay);
 }
 
 function isTutorialVisible() {
   return !!(tutorialOverlay && tutorialOverlay.classList.contains("open"));
-}
-
-function syncCanvasMenuVisibility() {
-  const canvasMenu = document.getElementById("canvas-menu");
-  const canvasMenuName = document.getElementById("canvas-menu-name");
-  if (canvasMenuName) canvasMenuName.textContent = playerName || "Player";
-  if (!canvasMenu) return;
-
-  const show =
-    !!authToken &&
-    !gameRunning &&
-    !isGameOverVisible() &&
-    !isNicknameScreenVisible() &&
-    !isTutorialVisible() &&
-    !document.getElementById("admin-modal")?.classList.contains("open");
-
-  canvasMenu.hidden = !show;
 }
 
 function repairUiState() {
@@ -2373,7 +2355,6 @@ function repairUiState() {
   refreshAuthTokenFromStorage();
 
   if (!authToken) {
-    syncCanvasMenuVisibility();
     if (!isNicknameScreenVisible()) showAuthScreen("login");
     return;
   }
@@ -2381,12 +2362,15 @@ function repairUiState() {
   if (isNicknameScreenVisible()) hideNicknameScreen();
 
   if (gameRunning || isGameOverVisible() || isTutorialVisible() || adminOpen) {
-    syncCanvasMenuVisibility();
     ensureRenderLoop();
     return;
   }
 
-  showStartMenu();
+  if (!isStartMenuVisible()) {
+    showStartMenu();
+  } else {
+    ensureRenderLoop();
+  }
 }
 
 function updateStartMenuUI() {
@@ -2426,16 +2410,14 @@ function updateStartMenuUI() {
 }
 
 function showStartMenu() {
-  if (startMenuOverlay) startMenuOverlay.style.display = "none";
+  if (startMenuOverlay) startMenuOverlay.style.display = "flex";
   ensureRenderLoop();
-  syncCanvasMenuVisibility();
   updateStartMenuUI();
   updateShopControls();
 }
 
 function hideStartMenu() {
   if (startMenuOverlay) startMenuOverlay.style.display = "none";
-  syncCanvasMenuVisibility();
 }
 
 const TUTORIAL_DONE_KEY = "hulkLivesTutorialDone";
