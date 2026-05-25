@@ -1,8 +1,5 @@
-const fs = require("fs");
-const path = require("path");
 const { usernameKey } = require("./auth");
-
-const adminConfigFile = path.join(__dirname, "admin-config.json");
+const storage = require("./persistent-storage");
 const GAME_ADMIN_USERNAME_KEY = "hulklives";
 
 const DEFAULT_BLOCKED_USERNAMES = ["sdfds", "testplayer", "admin", "moderator", "system"];
@@ -96,27 +93,24 @@ function normalizeAdminConfig(raw) {
   };
 }
 
-function loadAdminConfig() {
+async function loadAdminConfig() {
   try {
-    if (fs.existsSync(adminConfigFile)) {
-      adminConfig = normalizeAdminConfig(JSON.parse(fs.readFileSync(adminConfigFile, "utf8") || "{}"));
+    const raw = await storage.readJson("admin-config", null);
+    if (raw && typeof raw === "object") {
+      adminConfig = normalizeAdminConfig(raw);
     } else {
       adminConfig = normalizeAdminConfig(DEFAULT_ADMIN_CONFIG);
       saveAdminConfig();
     }
   } catch (error) {
-    console.warn("Unable to read admin-config.json", error);
+    console.warn("Unable to read admin config", error);
     adminConfig = normalizeAdminConfig(DEFAULT_ADMIN_CONFIG);
   }
   return adminConfig;
 }
 
 function saveAdminConfig() {
-  try {
-    fs.writeFileSync(adminConfigFile, JSON.stringify(adminConfig, null, 2));
-  } catch (error) {
-    console.warn("Unable to write admin-config.json", error);
-  }
+  storage.writeJson("admin-config", adminConfig);
 }
 
 function getAdminConfig() {
@@ -307,7 +301,8 @@ function unbanIp(ip) {
 }
 
 function ensureAdminConfigFile() {
-  if (!fs.existsSync(adminConfigFile)) {
+  if (!adminConfig) {
+    adminConfig = normalizeAdminConfig(DEFAULT_ADMIN_CONFIG);
     saveAdminConfig();
   }
 }

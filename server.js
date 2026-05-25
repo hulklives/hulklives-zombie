@@ -31,6 +31,7 @@ const {
   updateAnnouncement,
   updateLiveSettings
 } = require("./admin-config");
+const storage = require("./persistent-storage");
 const {
   deleteSession,
   deleteSessionsForUsernameKey,
@@ -46,9 +47,7 @@ const {
 const app = express();
 const server = http.createServer(app);
 app.set("trust proxy", 1);
-const savesFile = path.join(__dirname, "saves.json");
 const communityFile = path.join(__dirname, "community.json");
-const feedbackFile = path.join(__dirname, "feedback.json");
 const MAX_FEEDBACK_ENTRIES = 500;
 const MAX_FEEDBACK_MESSAGE_LENGTH = 600;
 const DEFAULT_COMMUNITY = {
@@ -68,6 +67,7 @@ const rateLimitAuth = createRateLimiter({ windowMs: 60_000, maxRequests: 20 });
 const rateLimitFeedback = createRateLimiter({ windowMs: 30 * 60_000, maxRequests: 4 });
 const rateLimitAdmin = createRateLimiter({ windowMs: 60_000, maxRequests: 120 });
 let saves = {};
+let feedbackEntries = [];
 
 function rejectIfBlockedRequest(req, res, username = "") {
   if (isIpBlocked(getClientKey(req))) {
@@ -136,13 +136,11 @@ function purgeBlockedSaves() {
   if (changed) saveSaves();
 }
 
-function loadSaves() {
+async function loadSaves() {
   try {
-    if (fs.existsSync(savesFile)) {
-      saves = JSON.parse(fs.readFileSync(savesFile, "utf8") || "{}") || {};
-    }
+    saves = (await storage.readJson("saves", {})) || {};
   } catch (error) {
-    console.warn("Unable to read saves.json", error);
+    console.warn("Unable to read saves", error);
     saves = {};
   }
 
@@ -162,11 +160,7 @@ function loadSaves() {
 }
 
 function saveSaves() {
-  try {
-    fs.writeFileSync(savesFile, JSON.stringify(saves, null, 2));
-  } catch (error) {
-    console.warn("Unable to write saves.json", error);
-  }
+  storage.writeJson("saves", saves);
 }
 
 function computeRankScore(data) {
@@ -374,24 +368,23 @@ app.get("/api/community", (req, res) => {
   });
 });
 
-function loadFeedbackEntries() {
+async function loadFeedbackStore() {
   try {
-    if (fs.existsSync(feedbackFile)) {
-      const parsed = JSON.parse(fs.readFileSync(feedbackFile, "utf8") || "[]");
-      return Array.isArray(parsed) ? parsed : [];
-    }
+    const parsed = await storage.readJson("feedback", []);
+    feedbackEntries = Array.isArray(parsed) ? parsed : [];
   } catch (error) {
-    console.warn("Unable to read feedback.json", error);
+    console.warn("Unable to read feedback", error);
+    feedbackEntries = [];
   }
-  return [];
+}
+
+function loadFeedbackEntries() {
+  return feedbackEntries;
 }
 
 function saveFeedbackEntries(entries) {
-  try {
-    fs.writeFileSync(feedbackFile, JSON.stringify(entries, null, 2));
-  } catch (error) {
-    console.warn("Unable to write feedback.json", error);
-  }
+  feedbackEntries = Array.isArray(entries) ? entries : [];
+  storage.writeJson("feedback", feedbackEntries);
 }
 
 function sanitizeFeedbackCategory(value) {
@@ -753,22 +746,6 @@ app.post("/save", requireAuthAndAccess, (req, res) => {
   res.json({ ok: true, rankScore: computeRankScore(saves[key]) });
 });
 
-loadAuthStore();
-loadAdminConfig();
-loadSaves();
-
-function ensureDataFiles() {
-  if (!fs.existsSync(savesFile)) {
-    fs.writeFileSync(savesFile, "{}\n");
-  }
-  if (!fs.existsSync(feedbackFile)) {
-    fs.writeFileSync(feedbackFile, "[]\n");
-  }
-  ensureAdminConfigFile();
-}
-
-ensureDataFiles();
-
 const port = process.env.PORT || 3000;
 
 server.on("error", (error) => {
@@ -791,7 +768,22 @@ server.on("error", (error) => {
   }
 });
 
-server.listen(port, () => {
-  console.log(`OK server running on http://localhost:${port}`);
-  console.log("Accounts, save validation, anti-cheat and admin tools enabled");
+async function startServer() {
+  await storage.initPersistentStorage();
+  await loadAuthStore();
+  await loadAdminConfig();
+  await loadSaves();
+  await loadFeedbackStore();
+  ensureAdminConfigFile();
+
+  server.listen(port, () => {
+    console.log(`OK server running on http://localhost:${port}`);
+    console.log(`Persistent storage: ${storage.getStorageMode()}`);
+    console.log("Accounts, save validation, anti-cheat and admin tools enabled");
+  });
+}
+
+startServer().catch((error) => {
+  console.error("Failed to start server", error);
+  process.exit(1);
 });

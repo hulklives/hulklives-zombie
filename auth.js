@@ -1,10 +1,6 @@
 const crypto = require("crypto");
-const fs = require("fs");
-const path = require("path");
 const { normalizeNickname, validateNickname } = require("./save-validation");
-
-const accountsFile = path.join(__dirname, "accounts.json");
-const sessionsFile = path.join(__dirname, "sessions.json");
+const storage = require("./persistent-storage");
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const MIN_PASSWORD_LENGTH = 6;
 const MAX_PASSWORD_LENGTH = 72;
@@ -12,37 +8,18 @@ const MAX_PASSWORD_LENGTH = 72;
 let accounts = {};
 let sessions = {};
 
-function loadJson(filePath) {
-  try {
-    if (fs.existsSync(filePath)) {
-      return JSON.parse(fs.readFileSync(filePath, "utf8") || "{}") || {};
-    }
-  } catch (error) {
-    console.warn(`Unable to read ${filePath}`, error);
-  }
-  return {};
-}
-
-function saveJson(filePath, data) {
-  try {
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
-  } catch (error) {
-    console.warn(`Unable to write ${filePath}`, error);
-  }
-}
-
-function loadAuthStore() {
-  accounts = loadJson(accountsFile);
-  sessions = loadJson(sessionsFile);
-  purgeExpiredSessions();
-}
-
 function saveAccounts() {
-  saveJson(accountsFile, accounts);
+  storage.writeJson("accounts", accounts);
 }
 
 function saveSessions() {
-  saveJson(sessionsFile, sessions);
+  storage.writeJson("sessions", sessions);
+}
+
+async function loadAuthStore() {
+  accounts = (await storage.readJson("accounts", {})) || {};
+  sessions = (await storage.readJson("sessions", {})) || {};
+  purgeExpiredSessions();
 }
 
 function usernameKey(username) {

@@ -1,7 +1,9 @@
 node_modules/
+data/
 accounts.json
 sessions.json
 saves.json
 feedback.json
+admin-config.json
 .env
 *.log
