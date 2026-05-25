@@ -38,6 +38,12 @@ const {
 } = require("./admin-config");
 const storage = require("./persistent-storage");
 const {
+  appendChatMessage,
+  getLatestChatId,
+  listChatMessages,
+  loadChatStore
+} = require("./chat");
+const {
   deleteSession,
   deleteSessionsForUsernameKey,
   findSaveKeyForAccount,
@@ -71,6 +77,7 @@ const rateLimitSave = createRateLimiter({ windowMs: 60_000, maxRequests: 45 });
 const rateLimitAuth = createRateLimiter({ windowMs: 60_000, maxRequests: 20 });
 const rateLimitFeedback = createRateLimiter({ windowMs: 30 * 60_000, maxRequests: 4 });
 const rateLimitAdmin = createRateLimiter({ windowMs: 60_000, maxRequests: 120 });
+const rateLimitChat = createRateLimiter({ windowMs: 60_000, maxRequests: 20 });
 let saves = {};
 let feedbackEntries = [];
 
@@ -816,6 +823,29 @@ app.post("/api/admin/reports/resolve", requireAuthAndAccess, requireGameAdmin, (
   res.json({ ok: true, id: reportId, resolved });
 });
 
+app.get("/api/chat", requireAuthAndAccess, (req, res) => {
+  const after = String(req.query.after || "").trim();
+  res.json({
+    ok: true,
+    messages: listChatMessages(after),
+    latestId: getLatestChatId()
+  });
+});
+
+app.post("/api/chat", requireAuthAndAccess, (req, res) => {
+  const senderKey = usernameKey(req.auth.displayName);
+  if (!rateLimitChat(`${getClientKey(req)}:chat:${senderKey}`)) {
+    return res.status(429).json({ error: "Slow down — wait a moment before sending again." });
+  }
+
+  const result = appendChatMessage(req.auth.displayName, req.body?.message);
+  if (!result.ok) {
+    return res.status(400).json({ error: result.error });
+  }
+
+  res.json({ ok: true, message: result.message, latestId: getLatestChatId() });
+});
+
 app.post("/save", requireAuthAndAccess, (req, res) => {
   const playerName = req.auth.displayName;
   const data = req.body && typeof req.body === "object" ? req.body : {};
@@ -865,12 +895,13 @@ async function startServer() {
   await loadSaves();
   await applyStartupSkillPointGrants();
   await loadFeedbackStore();
+  await loadChatStore();
   ensureAdminConfigFile();
 
   server.listen(port, () => {
     console.log(`OK server running on http://localhost:${port}`);
     console.log(`Persistent storage: ${storage.getStorageMode()}`);
-    console.log("Accounts, save validation, anti-cheat and admin tools enabled");
+    console.log("Accounts, save validation, anti-cheat, admin tools and live chat enabled");
   });
 }
 

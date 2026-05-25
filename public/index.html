@@ -885,6 +885,164 @@ font-size:9px;
 padding:2px 6px;
 }
 
+#global-chat{
+flex:1 1 auto;
+min-height:190px;
+max-height:280px;
+display:flex;
+flex-direction:column;
+overflow:hidden;
+background:rgba(2,12,6,0.42);
+border:1px solid var(--panel-border);
+box-shadow:0 4px 18px rgba(0,0,0,0.18);
+backdrop-filter:blur(6px);
+-webkit-backdrop-filter:blur(6px);
+padding:9px 10px 10px;
+border-radius:12px;
+color:var(--text-soft);
+}
+
+#global-chat .panel-header{
+margin-bottom:6px;
+padding-bottom:5px;
+border-bottom:1px solid rgba(255,255,255,0.06);
+}
+
+#global-chat .panel-eyebrow{
+font-size:9px;
+margin-bottom:2px;
+}
+
+#global-chat .panel-title{
+margin:0;
+font-size:12px;
+font-weight:700;
+letter-spacing:0.08em;
+text-transform:uppercase;
+color:rgba(255,255,255,0.82);
+}
+
+.global-chat-messages{
+flex:1 1 auto;
+min-height:110px;
+overflow-y:auto;
+display:flex;
+flex-direction:column;
+gap:8px;
+padding-right:2px;
+margin-bottom:8px;
+}
+
+.global-chat-empty{
+font-size:11px;
+line-height:1.45;
+color:var(--text-muted);
+padding:8px 2px;
+}
+
+.global-chat-message{
+padding:7px 8px;
+border-radius:10px;
+background:rgba(255,255,255,0.03);
+border:1px solid rgba(255,255,255,0.05);
+}
+
+.global-chat-message.has-role{
+border-color:rgba(255,200,60,0.18);
+background:rgba(255,200,60,0.05);
+}
+
+.global-chat-message-head{
+display:flex;
+align-items:center;
+gap:6px;
+flex-wrap:wrap;
+margin-bottom:3px;
+}
+
+.global-chat-user{
+font-size:11px;
+color:#d8ffe8;
+}
+
+.global-chat-role{
+font-size:9px;
+font-weight:800;
+letter-spacing:0.08em;
+text-transform:uppercase;
+color:#ffd88a;
+}
+
+.global-chat-time{
+margin-left:auto;
+font-size:9px;
+color:var(--text-muted);
+}
+
+.global-chat-text{
+margin:0;
+font-size:11px;
+line-height:1.4;
+color:var(--text-soft);
+word-break:break-word;
+}
+
+.global-chat-form{
+display:flex;
+gap:6px;
+align-items:center;
+}
+
+.global-chat-form input{
+flex:1 1 auto;
+min-width:0;
+padding:8px 10px;
+border-radius:10px;
+border:1px solid rgba(255,255,255,0.08);
+background:rgba(0,0,0,0.28);
+color:#fff;
+font-size:11px;
+}
+
+.global-chat-form input:focus{
+outline:none;
+border-color:rgba(93,255,176,0.35);
+box-shadow:0 0 0 2px rgba(93,255,176,0.12);
+}
+
+.global-chat-form button{
+flex:0 0 auto;
+padding:8px 10px;
+border-radius:10px;
+border:1px solid rgba(93,255,176,0.28);
+background:rgba(93,255,176,0.12);
+color:#d8ffe8;
+font-size:11px;
+font-weight:700;
+cursor:pointer;
+}
+
+.global-chat-form button:disabled,
+.global-chat-form input:disabled{
+opacity:0.45;
+cursor:not-allowed;
+}
+
+.global-chat-status{
+min-height:14px;
+margin:6px 0 0;
+font-size:10px;
+color:var(--text-muted);
+}
+
+.global-chat-status.error{
+color:#ff8a8a;
+}
+
+#global-chat.logged-out .global-chat-form{
+opacity:0.72;
+}
+
 #run-modifier-modal{
 display:none;
 z-index:10020;
@@ -3869,6 +4027,21 @@ TikTok @hulklives
 </div>
 </div>
 
+<div id="global-chat" class="side-panel global-chat-panel logged-out">
+<div class="panel-header">
+<p class="panel-eyebrow">Community</p>
+<h2 class="panel-title">Live Chat</h2>
+</div>
+<div id="global-chat-messages" class="global-chat-messages" aria-live="polite">
+<div class="global-chat-empty">Log in to join the chat.</div>
+</div>
+<form id="global-chat-form" class="global-chat-form">
+<input id="global-chat-input" type="text" maxlength="180" placeholder="Log in to chat" autocomplete="off" disabled>
+<button type="submit" id="global-chat-send" disabled>Send</button>
+</form>
+<p id="global-chat-status" class="global-chat-status" aria-live="polite"></p>
+</div>
+
 </div>
 
 </div>
@@ -4213,6 +4386,7 @@ TikTok @hulklives
 
 <script src="game-pro.js?v=3"></script>
 <script src="game.js?v=174"></script>
+<script src="chat.js?v=1"></script>
 <script src="admin-panel.js?v=11"></script>
 
 </body>

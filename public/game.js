@@ -2182,6 +2182,7 @@ async function completeLogin(username, token) {
   updateAchievementsUI();
   updateMonthlyAchievementHUD();
   refreshLeaderboard();
+  if (typeof refreshGlobalChat === "function") refreshGlobalChat();
   enterMainMenuFlow();
 }
 
@@ -2311,6 +2312,7 @@ async function logoutAccount() {
   showAuthScreen("login");
   setAuthError("");
   updateUI();
+  if (typeof refreshGlobalChat === "function") refreshGlobalChat();
 }
 
 function savePlayerName() {
@@ -7538,6 +7540,7 @@ async function init() {
     updateAchievementsUI();
     updateMonthlyAchievementHUD();
     refreshLeaderboard();
+    if (typeof refreshGlobalChat === "function") refreshGlobalChat();
     enterMainMenuFlow();
   } else {
     hideCenterHud();

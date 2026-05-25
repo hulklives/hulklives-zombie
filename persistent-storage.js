@@ -6,14 +6,15 @@ const DATA_DIR = process.env.DATA_DIR
   ? path.resolve(process.env.DATA_DIR)
   : path.join(ROOT_DIR, "data");
 
-const STORE_KEYS = ["accounts", "sessions", "saves", "feedback", "admin-config"];
+const STORE_KEYS = ["accounts", "sessions", "saves", "feedback", "admin-config", "chat"];
 
 const LEGACY_FILES = {
   accounts: path.join(ROOT_DIR, "accounts.json"),
   sessions: path.join(ROOT_DIR, "sessions.json"),
   saves: path.join(ROOT_DIR, "saves.json"),
   feedback: path.join(ROOT_DIR, "feedback.json"),
-  "admin-config": path.join(ROOT_DIR, "admin-config.json")
+  "admin-config": path.join(ROOT_DIR, "admin-config.json"),
+  chat: path.join(ROOT_DIR, "chat.json")
 };
 
 let pool = null;
