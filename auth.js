@@ -52,10 +52,10 @@ function usernameKey(username) {
 function validatePassword(password) {
   const value = String(password || "");
   if (value.length < MIN_PASSWORD_LENGTH) {
-    return `Lösenord måste vara minst ${MIN_PASSWORD_LENGTH} tecken.`;
+    return `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
   }
   if (value.length > MAX_PASSWORD_LENGTH) {
-    return `Lösenord får max vara ${MAX_PASSWORD_LENGTH} tecken.`;
+    return `Password must be at most ${MAX_PASSWORD_LENGTH} characters.`;
   }
   return "";
 }
@@ -101,6 +101,29 @@ function deleteSession(token) {
   saveSessions();
 }
 
+function deleteSessionsForUsernameKey(usernameKeyValue) {
+  const key = usernameKey(usernameKeyValue);
+  if (!key) return 0;
+
+  let removed = 0;
+  for (const [token, session] of Object.entries(sessions)) {
+    if (session?.usernameKey === key) {
+      delete sessions[token];
+      removed += 1;
+    }
+  }
+  if (removed > 0) saveSessions();
+  return removed;
+}
+
+function listAccountSummaries() {
+  return Object.values(accounts).map((account) => ({
+    username: account.displayName,
+    usernameKey: usernameKey(account.displayName),
+    createdAt: Number(account.createdAt) || 0
+  }));
+}
+
 function verifySession(token) {
   purgeExpiredSessions();
   const session = sessions[String(token || "")];
@@ -129,7 +152,7 @@ function registerAccount(username, password) {
 
   const key = usernameKey(displayName);
   if (accounts[key]) {
-    return { ok: false, error: "Det här namnet är redan taget. Välj ett annat eller logga in." };
+    return { ok: false, error: "This name is already taken. Choose another or log in." };
   }
 
   const { hash, salt } = hashPassword(password);
@@ -156,7 +179,7 @@ function loginAccount(username, password) {
   const key = usernameKey(displayName);
   const account = accounts[key];
   if (!account || !verifyPassword(password, account)) {
-    return { ok: false, error: "Fel användarnamn eller lösenord." };
+    return { ok: false, error: "Wrong username or password." };
   }
 
   const token = createSessionToken(key);
@@ -174,7 +197,7 @@ function requireAuth(req, res, next) {
   const session = verifySession(token);
 
   if (!session) {
-    return res.status(401).json({ error: "Du måste logga in." });
+    return res.status(401).json({ error: "You must log in." });
   }
 
   req.auth = session;
@@ -186,7 +209,9 @@ module.exports = {
   SESSION_TTL_MS,
   createSessionToken,
   deleteSession,
+  deleteSessionsForUsernameKey,
   findSaveKeyForAccount,
+  listAccountSummaries,
   loadAuthStore,
   loginAccount,
   registerAccount,

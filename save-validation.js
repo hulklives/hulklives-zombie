@@ -30,10 +30,10 @@ function normalizeNickname(value) {
 
 function validateNickname(value) {
   const name = normalizeNickname(value);
-  if (name.length < 2) return "Nickname måste vara minst 2 tecken.";
-  if (name.length > 16) return "Nickname får max vara 16 tecken.";
+  if (name.length < 2) return "Nickname must be at least 2 characters.";
+  if (name.length > 16) return "Nickname must be at most 16 characters.";
   if (!/^[a-zA-Z0-9 _\-åäöÅÄÖ]+$/.test(name)) {
-    return "Använd bara bokstäver, siffror, mellanslag, - eller _.";
+    return "Use only letters, numbers, spaces, - or _.";
   }
   return "";
 }

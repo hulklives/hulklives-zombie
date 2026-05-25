@@ -1,0 +1,25 @@
+{
+  "announcement": {
+    "active": true,
+    "message": "Tja!! Märker du något bugg eller något du skulle vilja att jag fixar till spelet? Skicka ett meddelande i REPORT! / Hulk",
+    "updatedAt": 1779730256230
+  },
+  "live": {
+    "giveawayEyebrow": "Giveaway",
+    "giveawayTitle": "🎁Coming Soon",
+    "giveawayTeaser": "Top the leaderboard — details coming soon.",
+    "showGiveaway": true,
+    "bonusOfferChance": 33,
+    "bonusWinChance": 50,
+    "freeplayEnabled": true
+  },
+  "bannedUsernames": [
+    "kalle123",
+    "uniquetest99"
+  ],
+  "bannedIps": [],
+  "defaultLeaderboardRole": "Survivor",
+  "leaderboardRoles": {
+    "hulklives": "Owner"
+  }
+}

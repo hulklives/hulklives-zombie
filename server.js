@@ -14,8 +14,28 @@ const {
   validateNickname
 } = require("./save-validation");
 const {
+  banIp,
+  banUsername,
+  ensureAdminConfigFile,
+  getAdminConfigSnapshot,
+  getCustomLeaderboardRole,
+  getLeaderboardRole,
+  getPublicRuntimeConfig,
+  isGameAdminName,
+  isIpBlocked,
+  isUsernameBlocked,
+  loadAdminConfig,
+  setPlayerLeaderboardRole,
+  unbanIp,
+  unbanUsername,
+  updateAnnouncement,
+  updateLiveSettings
+} = require("./admin-config");
+const {
   deleteSession,
+  deleteSessionsForUsernameKey,
   findSaveKeyForAccount,
+  listAccountSummaries,
   loadAuthStore,
   loginAccount,
   registerAccount,
@@ -43,12 +63,30 @@ const DEFAULT_COMMUNITY = {
     tiktokUrl: ""
   }
 };
-const blockedNames = new Set(["sdfds", "testplayer", "admin", "moderator", "system"]);
-const FEEDBACK_ADMIN_USERNAME_KEY = "hulklives";
 const rateLimitSave = createRateLimiter({ windowMs: 60_000, maxRequests: 45 });
 const rateLimitAuth = createRateLimiter({ windowMs: 60_000, maxRequests: 20 });
 const rateLimitFeedback = createRateLimiter({ windowMs: 30 * 60_000, maxRequests: 4 });
+const rateLimitAdmin = createRateLimiter({ windowMs: 60_000, maxRequests: 120 });
 let saves = {};
+
+function rejectIfBlockedRequest(req, res, username = "") {
+  if (isIpBlocked(getClientKey(req))) {
+    res.status(403).json({ error: "Access blocked." });
+    return true;
+  }
+  if (username && isUsernameBlocked(username)) {
+    res.status(403).json({ error: "This account is blocked." });
+    return true;
+  }
+  return false;
+}
+
+function requireGameAdmin(req, res, next) {
+  if (!isGameAdminName(req.auth.displayName)) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+  next();
+}
 
 app.disable("x-powered-by");
 app.use(express.json({ limit: MAX_SAVE_BODY_BYTES }));
@@ -76,11 +114,7 @@ app.use(
 );
 
 function isBlockedName(name) {
-  return blockedNames.has(String(name || "").trim().toLowerCase());
-}
-
-function isFeedbackAdminName(name) {
-  return usernameKey(name) === FEEDBACK_ADMIN_USERNAME_KEY;
+  return isUsernameBlocked(name);
 }
 
 function getClientKey(req) {
@@ -170,9 +204,10 @@ function buildLeaderboard(limit) {
       totalXp: Number(data.totalXp || 0),
       level: getLevelFromXp(data.totalXp),
       rankScore: computeRankScore(data),
-      lastPlayed: Number(data.lastPlayed || 0)
+      lastPlayed: Number(data.lastPlayed || 0),
+      hiddenFromLeaderboard: Boolean(data.leaderboardHidden)
     }))
-    .filter((row) => row.name && !isBlockedName(row.name))
+    .filter((row) => row.name && !isBlockedName(row.name) && !row.hiddenFromLeaderboard)
     .sort(
       (a, b) =>
         b.level - a.level ||
@@ -188,7 +223,8 @@ function buildLeaderboard(limit) {
       bestWave: row.bestWave,
       level: row.level,
       totalXp: row.totalXp,
-      rankScore: row.rankScore
+      rankScore: row.rankScore,
+      role: getLeaderboardRole(row.name)
     }));
 }
 
@@ -196,9 +232,7 @@ app.post("/api/register", (req, res) => {
   const username = normalizeNickname(req.body?.username);
   const password = String(req.body?.password || "");
 
-  if (isBlockedName(username)) {
-    return res.status(403).json({ error: "This name is not allowed" });
-  }
+  if (rejectIfBlockedRequest(req, res, username)) return;
   if (!rateLimitAuth(`${getClientKey(req)}:register`)) {
     return res.status(429).json({ error: "Too many attempts. Wait a minute." });
   }
@@ -216,9 +250,7 @@ app.post("/api/login", (req, res) => {
   const username = normalizeNickname(req.body?.username);
   const password = String(req.body?.password || "");
 
-  if (isBlockedName(username)) {
-    return res.status(403).json({ error: "This name is not allowed" });
-  }
+  if (rejectIfBlockedRequest(req, res, username)) return;
   if (!rateLimitAuth(`${getClientKey(req)}:login`)) {
     return res.status(429).json({ error: "Too many attempts. Wait a minute." });
   }
@@ -232,20 +264,28 @@ app.post("/api/login", (req, res) => {
   res.json({ ok: true, token: result.token, username: result.username });
 });
 
+function requireAuthAndAccess(req, res, next) {
+  requireAuth(req, res, () => {
+    if (rejectIfBlockedRequest(req, res, req.auth.displayName)) return;
+    next();
+  });
+}
+
 app.post("/api/logout", requireAuth, (req, res) => {
   deleteSession(req.authToken);
   res.json({ ok: true });
 });
 
-app.get("/api/me", requireAuth, (req, res) => {
+app.get("/api/me", requireAuthAndAccess, (req, res) => {
   res.json({
     ok: true,
     username: req.auth.displayName,
-    canViewFeedbackInbox: isFeedbackAdminName(req.auth.displayName)
+    isGameAdmin: isGameAdminName(req.auth.displayName),
+    canViewFeedbackInbox: isGameAdminName(req.auth.displayName)
   });
 });
 
-app.get("/save", requireAuth, (req, res) => {
+app.get("/save", requireAuthAndAccess, (req, res) => {
   const { data } = getSaveForAccount(req.auth.displayName);
   return res.json(data || {});
 });
@@ -298,7 +338,10 @@ function loadCommunityConfig() {
 
     return {
       giveaway: {
-        showComingSoon: giveaway.showComingSoon !== false
+        showComingSoon: giveaway.showComingSoon !== false,
+        eyebrow: String(giveaway.eyebrow || "").trim().slice(0, 48),
+        title: String(giveaway.title || "").trim().slice(0, 80),
+        teaser: String(giveaway.teaser || "").trim().slice(0, 160)
       },
       featured: {
         active,
@@ -317,7 +360,18 @@ function loadCommunityConfig() {
 }
 
 app.get("/api/community", (req, res) => {
-  res.json(loadCommunityConfig());
+  const community = loadCommunityConfig();
+  const runtime = getPublicRuntimeConfig();
+
+  res.json({
+    ...community,
+    giveaway: {
+      ...community.giveaway,
+      ...runtime.giveaway
+    },
+    announcement: runtime.announcement,
+    live: runtime.live
+  });
 });
 
 function loadFeedbackEntries() {
@@ -364,19 +418,19 @@ function sanitizeFeedbackContext(raw) {
   };
 }
 
-app.post("/api/feedback", requireAuth, (req, res) => {
+app.post("/api/feedback", requireAuthAndAccess, (req, res) => {
   const playerName = req.auth.displayName;
   const rateKey = `${usernameKey(playerName)}:feedback`;
 
   if (!rateLimitFeedback(rateKey)) {
     return res.status(429).json({
-      error: "Du kan skicka max några rapporter per halvtimme. Vänta lite."
+      error: "You can only send a few reports every half hour. Wait a bit."
     });
   }
 
   const message = sanitizeFeedbackMessage(req.body?.message);
   if (message.length < 8) {
-    return res.status(400).json({ error: "Skriv minst 8 tecken så vi förstår felet." });
+    return res.status(400).json({ error: "Write at least 8 characters so we understand the issue." });
   }
 
   const category = sanitizeFeedbackCategory(req.body?.category);
@@ -387,6 +441,7 @@ app.post("/api/feedback", requireAuth, (req, res) => {
     category,
     message,
     createdAt: Date.now(),
+    resolvedAt: 0,
     context,
     clientIp: getClientKey(req).slice(0, 64)
   };
@@ -402,16 +457,283 @@ app.post("/api/feedback", requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
-app.get("/api/feedback/inbox", requireAuth, (req, res) => {
-  if (!isFeedbackAdminName(req.auth.displayName)) {
-    return res.status(403).json({ error: "Forbidden" });
+app.get("/api/feedback/inbox", requireAuthAndAccess, requireGameAdmin, (req, res) => {
+  const status = String(req.query.status || "open").trim().toLowerCase();
+  let reports = loadFeedbackEntries().map(({ clientIp, ...entry }) => ({
+    ...entry,
+    resolved: Boolean(entry.resolvedAt)
+  }));
+
+  if (status === "open") {
+    reports = reports.filter((entry) => !entry.resolved);
+  } else if (status === "resolved") {
+    reports = reports.filter((entry) => entry.resolved);
   }
 
-  const reports = loadFeedbackEntries().map(({ clientIp, ...entry }) => entry);
-  res.json({ ok: true, total: reports.length, reports });
+  res.json({
+    ok: true,
+    total: reports.length,
+    openTotal: loadFeedbackEntries().filter((entry) => !entry.resolvedAt).length,
+    reports
+  });
 });
 
-app.post("/save", requireAuth, (req, res) => {
+function findSaveKeyByUsername(name) {
+  const key = findSaveKeyForAccount(saves, name);
+  if (key) return key;
+  const normalized = normalizeNickname(name);
+  return normalized || null;
+}
+
+function buildAdminPlayerRow(name, data) {
+  const save = data || {};
+  return {
+    username: name,
+    level: getLevelFromXp(save.totalXp),
+    kills: Number(save.kills || 0),
+    bestWave: Number(save.bestWave || 0),
+    totalXp: Number(save.totalXp || 0),
+    lastPlayed: Number(save.lastPlayed || 0),
+    leaderboardHidden: Boolean(save.leaderboardHidden),
+    banned: isUsernameBlocked(name),
+    leaderboardRole: getLeaderboardRole(name),
+    customLeaderboardRole: getCustomLeaderboardRole(name)
+  };
+}
+
+function listAdminPlayers(search = "") {
+  const query = String(search || "").trim().toLowerCase();
+  const rows = new Map();
+
+  for (const account of listAccountSummaries()) {
+    rows.set(usernameKey(account.username), buildAdminPlayerRow(account.username, null));
+  }
+
+  for (const [name, data] of Object.entries(saves)) {
+    const key = usernameKey(name);
+    rows.set(key, buildAdminPlayerRow(name, data));
+  }
+
+  let players = [...rows.values()].sort((a, b) => {
+    return (
+      b.level - a.level ||
+      b.totalXp - a.totalXp ||
+      b.kills - a.kills ||
+      a.username.localeCompare(b.username)
+    );
+  });
+
+  if (query) {
+    players = players.filter((row) => row.username.toLowerCase().includes(query));
+  }
+
+  return players.slice(0, 100);
+}
+
+app.get("/api/admin/state", requireAuthAndAccess, requireGameAdmin, (req, res) => {
+  if (!rateLimitAdmin(`${getClientKey(req)}:admin-state`)) {
+    return res.status(429).json({ error: "Too many admin requests." });
+  }
+
+  const reports = loadFeedbackEntries();
+  res.json({
+    ok: true,
+    config: getAdminConfigSnapshot(),
+    stats: {
+      playerCount: Object.keys(saves).length,
+      openReports: reports.filter((entry) => !entry.resolvedAt).length,
+      bannedUsers: getAdminConfigSnapshot().bannedUsernames.length,
+      bannedIps: getAdminConfigSnapshot().bannedIps.length
+    }
+  });
+});
+
+app.get("/api/admin/players", requireAuthAndAccess, requireGameAdmin, (req, res) => {
+  if (!rateLimitAdmin(`${getClientKey(req)}:admin-players`)) {
+    return res.status(429).json({ error: "Too many admin requests." });
+  }
+
+  res.json({
+    ok: true,
+    players: listAdminPlayers(req.query.search)
+  });
+});
+
+app.post("/api/admin/players/reset-save", requireAuthAndAccess, requireGameAdmin, (req, res) => {
+  if (!rateLimitAdmin(`${getClientKey(req)}:admin-reset`)) {
+    return res.status(429).json({ error: "Too many admin requests." });
+  }
+
+  const targetName = normalizeNickname(req.body?.username);
+  if (!targetName) {
+    return res.status(400).json({ error: "Enter a player name." });
+  }
+  if (isGameAdminName(targetName)) {
+    return res.status(403).json({ error: "You cannot reset the admin account." });
+  }
+
+  const key = findSaveKeyByUsername(targetName);
+  if (!key) {
+    return res.status(404).json({ error: "Player not found." });
+  }
+
+  saves[key] = sanitizeSaveShape({});
+  saveSaves();
+  console.log(`Admin reset save for ${targetName}`);
+  res.json({ ok: true, username: key });
+});
+
+app.post("/api/admin/players/leaderboard-hidden", requireAuthAndAccess, requireGameAdmin, (req, res) => {
+  if (!rateLimitAdmin(`${getClientKey(req)}:admin-leaderboard`)) {
+    return res.status(429).json({ error: "Too many admin requests." });
+  }
+
+  const targetName = normalizeNickname(req.body?.username);
+  const hidden = Boolean(req.body?.hidden);
+  if (!targetName) {
+    return res.status(400).json({ error: "Enter a player name." });
+  }
+
+  const key = findSaveKeyByUsername(targetName);
+  if (!key || !saves[key]) {
+    return res.status(404).json({ error: "Player not found." });
+  }
+
+  saves[key].leaderboardHidden = hidden;
+  saveSaves();
+  console.log(`Admin ${hidden ? "hid" : "restored"} ${targetName} on leaderboard`);
+  res.json({ ok: true, username: key, hidden });
+});
+
+app.post("/api/admin/players/leaderboard-role", requireAuthAndAccess, requireGameAdmin, (req, res) => {
+  if (!rateLimitAdmin(`${getClientKey(req)}:admin-role`)) {
+    return res.status(429).json({ error: "Too many admin requests." });
+  }
+
+  const targetName = normalizeNickname(req.body?.username);
+  if (!targetName) {
+    return res.status(400).json({ error: "Enter a player name." });
+  }
+  if (!findSaveKeyByUsername(targetName) && !listAccountSummaries().some((row) => usernameKey(row.username) === usernameKey(targetName))) {
+    return res.status(404).json({ error: "Player not found." });
+  }
+
+  const result = setPlayerLeaderboardRole(targetName, req.body?.role);
+  if (!result.ok) {
+    return res.status(400).json({ error: result.error });
+  }
+
+  console.log(`Admin set leaderboard role for ${targetName}: ${result.role}`);
+  res.json({
+    ok: true,
+    username: targetName,
+    role: result.role,
+    customRole: result.customRole
+  });
+});
+
+app.post("/api/admin/players/ban", requireAuthAndAccess, requireGameAdmin, (req, res) => {
+  if (!rateLimitAdmin(`${getClientKey(req)}:admin-ban`)) {
+    return res.status(429).json({ error: "Too many admin requests." });
+  }
+
+  const targetName = normalizeNickname(req.body?.username);
+  if (!targetName) {
+    return res.status(400).json({ error: "Enter a player name." });
+  }
+
+  const result = banUsername(targetName);
+  if (!result.ok) {
+    return res.status(403).json({ error: result.error });
+  }
+
+  deleteSessionsForUsernameKey(result.usernameKey);
+  purgeBlockedSaves();
+
+  console.log(`Admin banned account ${targetName}`);
+  res.json({ ok: true, username: targetName });
+});
+
+app.post("/api/admin/players/unban", requireAuthAndAccess, requireGameAdmin, (req, res) => {
+  if (!rateLimitAdmin(`${getClientKey(req)}:admin-unban`)) {
+    return res.status(429).json({ error: "Too many admin requests." });
+  }
+
+  const targetName = normalizeNickname(req.body?.username);
+  if (!targetName) {
+    return res.status(400).json({ error: "Enter a player name." });
+  }
+
+  unbanUsername(targetName);
+  console.log(`Admin unbanned account ${targetName}`);
+  res.json({ ok: true, username: targetName });
+});
+
+app.post("/api/admin/bans/ip", requireAuthAndAccess, requireGameAdmin, (req, res) => {
+  if (!rateLimitAdmin(`${getClientKey(req)}:admin-ban-ip`)) {
+    return res.status(429).json({ error: "Too many admin requests." });
+  }
+
+  const ip = String(req.body?.ip || "").trim();
+  const ban = req.body?.ban !== false;
+  if (!ip) {
+    return res.status(400).json({ error: "Enter an IP address." });
+  }
+
+  const result = ban ? banIp(ip) : unbanIp(ip);
+  if (!result.ok) {
+    return res.status(400).json({ error: result.error || "Could not update IP ban." });
+  }
+
+  console.log(`Admin ${ban ? "banned" : "unbanned"} IP ${result.ip}`);
+  res.json({ ok: true, ip: result.ip, banned: ban });
+});
+
+app.post("/api/admin/config/announcement", requireAuthAndAccess, requireGameAdmin, (req, res) => {
+  if (!rateLimitAdmin(`${getClientKey(req)}:admin-announcement`)) {
+    return res.status(429).json({ error: "Too many admin requests." });
+  }
+
+  const announcement = updateAnnouncement(req.body || {});
+  res.json({ ok: true, announcement, public: getPublicRuntimeConfig().announcement });
+});
+
+app.post("/api/admin/config/live", requireAuthAndAccess, requireGameAdmin, (req, res) => {
+  if (!rateLimitAdmin(`${getClientKey(req)}:admin-live`)) {
+    return res.status(429).json({ error: "Too many admin requests." });
+  }
+
+  const live = updateLiveSettings(req.body || {});
+  res.json({
+    ok: true,
+    live,
+    public: getPublicRuntimeConfig()
+  });
+});
+
+app.post("/api/admin/reports/resolve", requireAuthAndAccess, requireGameAdmin, (req, res) => {
+  if (!rateLimitAdmin(`${getClientKey(req)}:admin-report`)) {
+    return res.status(429).json({ error: "Too many admin requests." });
+  }
+
+  const reportId = String(req.body?.id || "").trim();
+  const resolved = Boolean(req.body?.resolved);
+  if (!reportId) {
+    return res.status(400).json({ error: "Missing report id." });
+  }
+
+  const entries = loadFeedbackEntries();
+  const entry = entries.find((item) => item.id === reportId);
+  if (!entry) {
+    return res.status(404).json({ error: "Report not found." });
+  }
+
+  entry.resolvedAt = resolved ? Date.now() : 0;
+  saveFeedbackEntries(entries);
+  res.json({ ok: true, id: reportId, resolved });
+});
+
+app.post("/save", requireAuthAndAccess, (req, res) => {
   const playerName = req.auth.displayName;
   const data = req.body && typeof req.body === "object" ? req.body : {};
 
@@ -432,6 +754,7 @@ app.post("/save", requireAuth, (req, res) => {
 });
 
 loadAuthStore();
+loadAdminConfig();
 loadSaves();
 
 function ensureDataFiles() {
@@ -441,6 +764,7 @@ function ensureDataFiles() {
   if (!fs.existsSync(feedbackFile)) {
     fs.writeFileSync(feedbackFile, "[]\n");
   }
+  ensureAdminConfigFile();
 }
 
 ensureDataFiles();
@@ -469,5 +793,5 @@ server.on("error", (error) => {
 
 server.listen(port, () => {
   console.log(`OK server running on http://localhost:${port}`);
-  console.log("Accounts, save validation and anti-cheat enabled");
+  console.log("Accounts, save validation, anti-cheat and admin tools enabled");
 });

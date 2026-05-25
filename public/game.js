@@ -19,9 +19,14 @@ const bulletSpeedLevelDisplay = document.getElementById("bullet-speed-level");
 
 
 
-const VIEW_WIDTH = 1100;
+const VIEW_WIDTH = 1280;
 
-const VIEW_HEIGHT = 700;
+const VIEW_HEIGHT = 800;
+
+if (c) {
+  c.width = VIEW_WIDTH;
+  c.height = VIEW_HEIGHT;
+}
 
 const WORLD_WIDTH = 2200;
 
@@ -52,34 +57,34 @@ const WAVE_BOSS_XP_REWARD = 150;
 const ARENA_HUE = 118;
 
 const ACHIEVEMENTS = [
-  { id: "w10", type: "wave", target: 10, name: "Överlevare", desc: "Klarade wave 10", emoji: "🛡️" },
-  { id: "w25", type: "wave", target: 25, name: "Veteran", desc: "Klarade wave 25", emoji: "⚔️" },
-  { id: "w50", type: "wave", target: 50, name: "Elit", desc: "Klarade wave 50", emoji: "🔥" },
-  { id: "w75", type: "wave", target: 75, name: "Legend", desc: "Klarade wave 75", emoji: "👑" },
-  { id: "w100", type: "wave", target: 100, name: "Odödlig", desc: "Klarade wave 100", emoji: "💀" },
-  { id: "k500", type: "kills", target: 500, name: "Slaktare", desc: "500 kills totalt", emoji: "🗡️" },
-  { id: "k2000", type: "kills", target: 2000, name: "Jägare", desc: "2000 kills totalt", emoji: "🎯" },
-  { id: "k5000", type: "kills", target: 5000, name: "Massmördare", desc: "5000 kills totalt", emoji: "☠️" },
-  { id: "lvl30", type: "level", target: 30, name: "Uppgraderad", desc: "Nå level 30", emoji: "⭐" },
-  { id: "lvl50", type: "level", target: 50, name: "Mästare", desc: "Nå level 50", emoji: "🏆" }
+  { id: "w10", type: "wave", target: 10, name: "Survivor", desc: "Cleared wave 10", emoji: "🛡️" },
+  { id: "w25", type: "wave", target: 25, name: "Veteran", desc: "Cleared wave 25", emoji: "⚔️" },
+  { id: "w50", type: "wave", target: 50, name: "Elite", desc: "Cleared wave 50", emoji: "🔥" },
+  { id: "w75", type: "wave", target: 75, name: "Legend", desc: "Cleared wave 75", emoji: "👑" },
+  { id: "w100", type: "wave", target: 100, name: "Immortal", desc: "Cleared wave 100", emoji: "💀" },
+  { id: "k500", type: "kills", target: 500, name: "Slayer", desc: "500 total kills", emoji: "🗡️" },
+  { id: "k2000", type: "kills", target: 2000, name: "Hunter", desc: "2,000 total kills", emoji: "🎯" },
+  { id: "k5000", type: "kills", target: 5000, name: "Mass Murderer", desc: "5,000 total kills", emoji: "☠️" },
+  { id: "lvl30", type: "level", target: 30, name: "Upgraded", desc: "Reach level 30", emoji: "⭐" },
+  { id: "lvl50", type: "level", target: 50, name: "Master", desc: "Reach level 50", emoji: "🏆" }
 ];
 
 const MONTHLY_ACHIEVEMENTS = {
   "2026-05": {
     id: "month-2026-05",
     target: 8000,
-    name: "Maj-slaktare",
-    desc: "8 000 kills i maj",
+    name: "May Slayer",
+    desc: "8,000 kills in May",
     emoji: "🌸",
-    monthLabel: "maj 2026"
+    monthLabel: "May 2026"
   },
   "2026-06": {
     id: "month-2026-06",
     target: 10000,
-    name: "Juni-slaktare",
-    desc: "10 000 kills i juni",
+    name: "June Slayer",
+    desc: "10,000 kills in June",
     emoji: "☀️",
-    monthLabel: "juni 2026"
+    monthLabel: "June 2026"
   }
 };
 
@@ -89,7 +94,7 @@ const WEAPONS = [
     hotkey: "1",
     name: "Pistol",
     emoji: "🔫",
-    desc: "Balanserad — bra till allt",
+    desc: "Balanced — good for everything",
     damageMult: 1,
     speedMult: 1,
     cooldownMult: 1,
@@ -103,7 +108,7 @@ const WEAPONS = [
     hotkey: "2",
     name: "SMG",
     emoji: "⚡",
-    desc: "Snabb eld, lite lägre skada",
+    desc: "Fast fire, slightly lower damage",
     damageMult: 0.72,
     speedMult: 1.12,
     cooldownMult: 0.4,
@@ -117,7 +122,7 @@ const WEAPONS = [
     hotkey: "3",
     name: "Shotgun",
     emoji: "💥",
-    desc: "5 pellets i spridning",
+    desc: "5 pellets in a spread",
     damageMult: 0.78,
     speedMult: 0.88,
     cooldownMult: 1.5,
@@ -131,7 +136,7 @@ const WEAPONS = [
     hotkey: "4",
     name: "Rifle",
     emoji: "🎯",
-    desc: "Tung skada, långsammare skott",
+    desc: "Heavy damage, slower shots",
     damageMult: 2.15,
     speedMult: 1.38,
     cooldownMult: 1.32,
@@ -143,13 +148,13 @@ const WEAPONS = [
 ];
 
 const WAVE_EVENTS = [
-  { id: "normal", name: "Normal", emoji: "🌿", msg: "Vanlig wave", tint: null },
+  { id: "normal", name: "Normal", emoji: "🌿", msg: "Normal wave", tint: null },
   { id: "doublexp", name: "Double XP", emoji: "⭐", msg: "2x XP per kill!", xpMult: 2, tint: "rgba(255,220,80,0.14)" },
-  { id: "loot", name: "Loot Wave", emoji: "💰", msg: "+2 skill points om du klarar!", skillOnClear: 2, tint: "rgba(255,200,50,0.12)" },
-  { id: "speed", name: "Speed Boost", emoji: "⚡", msg: "Du springer snabbare!", speedMult: 1.45, tint: "rgba(100,200,255,0.12)" },
-  { id: "rage", name: "Rage Wave", emoji: "🔥", msg: "Snabba zombies, extra XP!", zombieSpeedMult: 1.35, xpMult: 1.5, tint: "rgba(255,80,60,0.14)" },
-  { id: "chill", name: "Chill Wave", emoji: "😎", msg: "Du tar mindre skada!", damageMult: 0.5, tint: "rgba(120,200,255,0.12)" },
-  { id: "boss", name: "Boss Wave", emoji: "👹", msg: "Mini-boss + gäng!", bossWave: true, tint: "rgba(180,80,255,0.14)" }
+  { id: "loot", name: "Loot Wave", emoji: "💰", msg: "+2 skill points if you clear it!", skillOnClear: 2, tint: "rgba(255,200,50,0.12)" },
+  { id: "speed", name: "Speed Boost", emoji: "⚡", msg: "You run faster!", speedMult: 1.45, tint: "rgba(100,200,255,0.12)" },
+  { id: "rage", name: "Rage Wave", emoji: "🔥", msg: "Fast zombies, extra XP!", zombieSpeedMult: 1.35, xpMult: 1.5, tint: "rgba(255,80,60,0.14)" },
+  { id: "chill", name: "Chill Wave", emoji: "😎", msg: "You take less damage!", damageMult: 0.5, tint: "rgba(120,200,255,0.12)" },
+  { id: "boss", name: "Boss Wave", emoji: "👹", msg: "Mini-boss + horde!", bossWave: true, tint: "rgba(180,80,255,0.14)" }
 ];
 
 
@@ -434,6 +439,7 @@ function playGunshotNow() {
   thumpGain.connect(output);
   thump.start(now);
   thump.stop(now + 0.055);
+  if (typeof enhanceGunshotNow === "function") enhanceGunshotNow();
 }
 
 function playGunshot() {
@@ -852,11 +858,11 @@ function setFeedbackCategory(category) {
 
 function getFeedbackContext() {
   const level = getXpProgress(player.totalXp).level;
-  let page = "menyn";
-  if (isNicknameScreenVisible()) page = "inloggning";
-  else if (isStartMenuVisible()) page = "startmeny";
+  let page = "menu";
+  if (isNicknameScreenVisible()) page = "login";
+  else if (isStartMenuVisible()) page = "start menu";
   else if (isGameOverVisible()) page = "game over";
-  else if (gameRunning) page = paused ? "pausat spel" : "under spel";
+  else if (gameRunning) page = paused ? "paused game" : "in game";
 
   return {
     wave: Math.max(0, Number(wave) || 0),
@@ -874,7 +880,7 @@ function updateFeedbackUI() {
   const context = getFeedbackContext();
 
   if (contextLine) {
-    contextLine.textContent = `Skickas från: ${context.page} · Wave ${context.wave} · Level ${context.level} · Vapen ${context.equippedWeapon}`;
+    contextLine.textContent = `Sent from: ${context.page} · Wave ${context.wave} · Level ${context.level} · Weapon ${context.equippedWeapon}`;
   }
 
   if (submitBtn) {
@@ -899,7 +905,7 @@ function openFeedbackMenu() {
   if (!modal) return;
 
   if (!authToken) {
-    showMilestone("Logga in för att skicka feedback");
+    showMilestone("Log in to send feedback");
     return;
   }
 
@@ -940,18 +946,18 @@ async function submitFeedback() {
   const message = String(messageEl?.value || "").trim();
 
   if (!authToken) {
-    setFeedbackStatus("Du måste vara inloggad för att skicka feedback.", "error");
+    setFeedbackStatus("You must be logged in to send feedback.", "error");
     return;
   }
 
   if (message.length < 8) {
-    setFeedbackStatus("Skriv minst 8 tecken så vi förstår felet.", "error");
+    setFeedbackStatus("Write at least 8 characters so we understand the issue.", "error");
     return;
   }
 
   feedbackSubmitting = true;
   updateFeedbackUI();
-  setFeedbackStatus("Skickar...");
+  setFeedbackStatus("Sending...");
 
   try {
     const response = await authFetch("/api/feedback", {
@@ -965,15 +971,15 @@ async function submitFeedback() {
     const payload = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      setFeedbackStatus(payload.error || "Kunde inte skicka just nu.", "error");
+      setFeedbackStatus(payload.error || "Could not send right now.", "error");
       feedbackSubmitting = false;
       updateFeedbackUI();
       return;
     }
 
     if (messageEl) messageEl.value = "";
-    setFeedbackStatus("Tack! Din rapport är skickad till HulkLives.", "success");
-    showMilestone("💬 Feedback skickad — tack!");
+    setFeedbackStatus("Thanks! Your report was sent to HulkLives.", "success");
+    showMilestone("💬 Feedback sent — thanks!");
     feedbackSubmitting = false;
     updateFeedbackUI();
     if (canViewFeedbackInbox) {
@@ -984,7 +990,7 @@ async function submitFeedback() {
       closeFeedbackMenu();
     }, 900);
   } catch (error) {
-    setFeedbackStatus("Kunde inte nå servern. Försök igen.", "error");
+    setFeedbackStatus("Could not reach the server. Try again.", "error");
     feedbackSubmitting = false;
     updateFeedbackUI();
   }
@@ -992,65 +998,82 @@ async function submitFeedback() {
 
 const FEEDBACK_CATEGORY_LABELS = {
   bug: "Bug",
-  idea: "Förslag",
+  idea: "Suggestion",
   feedback: "Feedback",
-  other: "Annat"
+  other: "Other"
 };
 
 function isFeedbackInboxAdminName(name) {
+  return isGameAdminName(name);
+}
+
+function isGameAdminName(name) {
   return String(name || "").trim().toLowerCase() === "hulklives";
 }
 
 function updateFeedbackAdminUI(total = null) {
-  document.querySelectorAll(".feedback-admin-only").forEach((el) => {
-    el.hidden = !canViewFeedbackInbox;
+  updateGameAdminUI(total);
+}
+
+function updateGameAdminUI(openReports = null) {
+  window.isGameAdmin = isGameAdmin;
+  document.querySelectorAll(".game-admin-only, .feedback-admin-only").forEach((el) => {
+    el.hidden = !isGameAdmin;
   });
 
-  const countText = total === null ? null : String(Math.max(0, Number(total) || 0));
+  const countText = openReports === null ? null : String(Math.max(0, Number(openReports) || 0));
   if (countText !== null) {
     const countEl = document.getElementById("feedback-inbox-count");
     const countMenuEl = document.getElementById("feedback-inbox-count-menu");
+    const adminBadge = document.getElementById("admin-open-reports-count");
+    const adminMenuBadge = document.getElementById("admin-open-reports-count-menu");
     if (countEl) countEl.textContent = countText;
     if (countMenuEl) countMenuEl.textContent = countText;
+    if (adminBadge) adminBadge.textContent = countText;
+    if (adminMenuBadge) adminMenuBadge.textContent = countText;
   }
 }
 
 async function refreshAccountAccess() {
+  isGameAdmin = false;
   canViewFeedbackInbox = false;
   if (!authToken) {
-    updateFeedbackAdminUI(0);
+    updateGameAdminUI(0);
     return;
   }
 
   try {
     const response = await authFetch("/api/me");
     if (!response.ok) {
-      updateFeedbackAdminUI(0);
+      updateGameAdminUI(0);
       return;
     }
 
     const payload = await response.json();
-    canViewFeedbackInbox =
-      Boolean(payload.canViewFeedbackInbox) && isFeedbackInboxAdminName(payload.username || playerName);
+    isGameAdmin =
+      Boolean(payload.isGameAdmin || payload.canViewFeedbackInbox) &&
+      isGameAdminName(payload.username || playerName);
+    canViewFeedbackInbox = isGameAdmin;
   } catch (error) {
+    isGameAdmin = false;
     canViewFeedbackInbox = false;
   }
 
-  updateFeedbackAdminUI();
+  updateGameAdminUI();
 
-  if (canViewFeedbackInbox) {
+  if (isGameAdmin) {
     await refreshFeedbackInboxCounts();
   }
 }
 
 async function refreshFeedbackInboxCounts() {
-  if (!canViewFeedbackInbox) return;
+  if (!isGameAdmin) return;
 
   try {
-    const response = await authFetch("/api/feedback/inbox");
+    const response = await authFetch("/api/feedback/inbox?status=open");
     if (!response.ok) return;
     const payload = await response.json();
-    updateFeedbackAdminUI(payload.total || 0);
+    updateGameAdminUI(payload.openTotal ?? payload.total ?? 0);
   } catch (error) {
     // ignore
   }
@@ -1058,8 +1081,8 @@ async function refreshFeedbackInboxCounts() {
 
 function formatFeedbackTimestamp(value) {
   const date = new Date(Number(value) || 0);
-  if (Number.isNaN(date.getTime())) return "Okänd tid";
-  return date.toLocaleString("sv-SE", {
+  if (Number.isNaN(date.getTime())) return "Unknown time";
+  return date.toLocaleString("en-US", {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -1073,7 +1096,7 @@ function renderFeedbackInbox(reports) {
   if (!list) return;
 
   if (!reports || reports.length === 0) {
-    list.innerHTML = '<div class="lb-empty">Inga rapporter än.</div>';
+    list.innerHTML = '<div class="lb-empty">No reports yet.</div>';
     return;
   }
 
@@ -1084,13 +1107,13 @@ function renderFeedbackInbox(reports) {
       const context = report.context || {};
       return `<article class="feedback-report-card ${escapeHtml(category)}">
   <div class="feedback-report-head">
-    <span class="feedback-report-user">${escapeHtml(report.username || "Okänd")}</span>
+    <span class="feedback-report-user">${escapeHtml(report.username || "Unknown")}</span>
     <span class="feedback-report-time">${escapeHtml(formatFeedbackTimestamp(report.createdAt))}</span>
   </div>
   <span class="feedback-report-tag">${escapeHtml(label)}</span>
   <p class="feedback-report-message">${escapeHtml(report.message || "")}</p>
   <div class="feedback-report-meta">
-    <span class="lb-stat">${escapeHtml(context.page || "okänd plats")}</span>
+    <span class="lb-stat">${escapeHtml(context.page || "unknown location")}</span>
     <span class="lb-stat">Wave ${Number(context.wave) || 0}</span>
     <span class="lb-stat">Lv ${Number(context.level) || 1}</span>
     <span class="lb-stat">${escapeHtml(context.equippedWeapon || "pistol")}</span>
@@ -1105,7 +1128,7 @@ async function refreshFeedbackInbox() {
   if (!canViewFeedbackInbox) return;
 
   if (list) {
-    list.innerHTML = '<div class="lb-empty">Laddar...</div>';
+    list.innerHTML = '<div class="lb-empty">Loading...</div>';
   }
 
   try {
@@ -1114,7 +1137,7 @@ async function refreshFeedbackInbox() {
 
     if (!response.ok) {
       if (list) {
-        list.innerHTML = `<div class="lb-empty">${escapeHtml(payload.error || "Kunde inte ladda rapporter.")}</div>`;
+        list.innerHTML = `<div class="lb-empty">${escapeHtml(payload.error || "Could not load reports.")}</div>`;
       }
       return;
     }
@@ -1123,7 +1146,7 @@ async function refreshFeedbackInbox() {
     updateFeedbackAdminUI(payload.total || 0);
   } catch (error) {
     if (list) {
-      list.innerHTML = '<div class="lb-empty">Kunde inte nå servern.</div>';
+      list.innerHTML = '<div class="lb-empty">Could not reach the server.</div>';
     }
   }
 }
@@ -1157,6 +1180,7 @@ function hideAchievementsModal() {
 let authToken = "";
 let authMode = "login";
 let canViewFeedbackInbox = false;
+let isGameAdmin = false;
 
 
 
@@ -1275,6 +1299,19 @@ const NEXT_WAVE_DELAY_MS = 2500;
 const SHOOT_COOLDOWN = 12;
 
 let gameRunning = false;
+let gameMode = "campaign";
+let lastGameMode = "campaign";
+let runKills = 0;
+let freeplaySpawnTick = 0;
+let freeplayRunSeconds = 0;
+let freeplayPhase = "steady";
+let freeplayPhaseTimer = 0;
+let freeplayPhaseDuration = 0;
+let freeplayArenaTint = null;
+let freeplayCombo = 0;
+let freeplayComboTimer = 0;
+let freeplayBestCombo = 0;
+let freeplayLastBossAt = -999;
 
 let animationFrameId = null;
 
@@ -1286,8 +1323,73 @@ let pendingClearedWave = null;
 let leaderboardRefreshTimer = null;
 let communityConfig = {
   giveaway: { showComingSoon: true },
-  featured: { active: false }
+  featured: { active: false },
+  announcement: { active: false, message: "" },
+  live: {
+    freeplayEnabled: true,
+    bonusOfferChance: 18,
+    bonusWinChance: 50
+  }
 };
+
+let runtimeLiveConfig = {
+  freeplayEnabled: true,
+  bonusOfferChance: 18,
+  bonusWinChance: 50
+};
+
+let runtimeAnnouncement = {
+  active: false,
+  message: ""
+};
+
+function getBonusOfferChance() {
+  return Math.max(0, Math.min(1, Number(runtimeLiveConfig.bonusOfferChance || 18) / 100));
+}
+
+function getBonusWinChance() {
+  return Math.max(0, Math.min(1, Number(runtimeLiveConfig.bonusWinChance || 50) / 100));
+}
+
+function applyRuntimeConfigFromCommunity(config) {
+  communityConfig = config || communityConfig;
+  runtimeLiveConfig = {
+    freeplayEnabled: config?.live?.freeplayEnabled !== false,
+    bonusOfferChance: Number(config?.live?.bonusOfferChance) || 18,
+    bonusWinChance: Number(config?.live?.bonusWinChance) || 50
+  };
+  runtimeAnnouncement = {
+    active: Boolean(config?.announcement?.active),
+    message: String(config?.announcement?.message || "").trim()
+  };
+  renderStartMenuAnnouncement();
+  updateFreeplayMenuState();
+
+  const bonusCopy = document.querySelector("#bonus-offer p");
+  if (bonusCopy) {
+    bonusCopy.textContent = `${runtimeLiveConfig.bonusWinChance}% chance for ${BONUS_REWARD_SP} skill points`;
+  }
+}
+
+function renderStartMenuAnnouncement() {
+  const banner = document.getElementById("start-menu-announcement");
+  const textEl = document.getElementById("start-menu-announcement-text");
+  if (!banner || !textEl) return;
+
+  const show = Boolean(runtimeAnnouncement.active && runtimeAnnouncement.message);
+  banner.hidden = !show;
+  textEl.textContent = show ? runtimeAnnouncement.message : "";
+}
+
+function updateFreeplayMenuState() {
+  const freeplayBtn = document.querySelector(".start-menu-freeplay");
+  if (!freeplayBtn) return;
+
+  const enabled = runtimeLiveConfig.freeplayEnabled !== false;
+  freeplayBtn.disabled = !enabled;
+  freeplayBtn.classList.toggle("disabled-mode", !enabled);
+  freeplayBtn.title = enabled ? "" : "Freeplay is temporarily disabled.";
+}
 
 function getXpForNextLevel(level) {
   if (level < 10) return 280 + level * 40;
@@ -1401,6 +1503,12 @@ function getZombieRewardColors(kind) {
 }
 
 function onZombieKilled(zombie) {
+  if (isFreeplayMode()) {
+    onFreeplayZombieKilled(zombie);
+    return;
+  }
+
+  runKills += 1;
   player.kills += 1;
   player.score = player.kills * 10;
 
@@ -1423,7 +1531,7 @@ function onZombieKilled(zombie) {
     player.skillPoints += WAVE_BOSS_SP_REWARD;
     bonusSp += WAVE_BOSS_SP_REWARD;
     spLabel = `+${WAVE_BOSS_SP_REWARD} SP BOSS`;
-    showMilestone(`👹 Wave boss besegrad! +${WAVE_BOSS_SP_REWARD} SP · +${killXp} XP`);
+    showMilestone(`👹 Wave boss defeated! +${WAVE_BOSS_SP_REWARD} SP · +${killXp} XP`);
   }
 
   spawnPlayerKillReward({
@@ -1436,13 +1544,47 @@ function onZombieKilled(zombie) {
 
   if (levelAfter > levelBefore) {
     playLevelUp();
-    showMilestone(`Level up! Du nådde level ${levelAfter}`);
+    showMilestone(`Level up! You reached level ${levelAfter}`);
   }
 
   registerMonthlyKill();
   checkAndUnlockAchievements();
   checkAndUnlockMonthlyAchievement();
+  applyRunLifestealOnKill();
   saveProgress();
+}
+
+function onFreeplayZombieKilled(zombie) {
+  runKills += 1;
+  player.score = runKills * 10;
+
+  freeplayComboTimer = 52;
+  freeplayCombo += 1;
+  if (freeplayCombo > freeplayBestCombo) {
+    freeplayBestCombo = freeplayCombo;
+  }
+
+  const cx = zombie.x + zombie.size / 2;
+  const cy = zombie.y + zombie.size / 2;
+  const label = freeplayCombo >= 4 ? `+1 x${freeplayCombo}` : "+1";
+  spawnFloatingText(cx, cy - zombie.size * 0.18, label, zombie.golden ? "#ffe066" : "#b8f5d4", 0.92);
+
+  if (freeplayCombo >= 5 && freeplayCombo % 5 === 0) {
+    addScreenShake(1.2 + Math.min(3.5, freeplayCombo / 12));
+  }
+  if (freeplayCombo === 10 || freeplayCombo === 25 || freeplayCombo === 50) {
+    showMilestone(`🔥 ${freeplayCombo} kill combo!`);
+  }
+  if (zombie?.freeplayBoss || zombie?.isWaveBoss) {
+    showMilestone("👹 Freeplay boss destroyed!");
+    addScreenShake(8);
+    freeplayCombo += 4;
+  }
+  if (freeplayCombo > 0 && freeplayCombo % 20 === 0) {
+    const heal = Math.max(1, Math.round(player.maxHp * 0.06));
+    player.hp = Math.min(player.maxHp, player.hp + heal);
+    spawnFloatingText(cx, cy - 24, `+${heal} HP`, "#9dffc8", 1);
+  }
 }
 
 function getCurrentMonthKey() {
@@ -1586,7 +1728,7 @@ function showNextAchievementPopup() {
   if (descEl) descEl.textContent = achievement.desc;
   if (labelEl) {
     labelEl.textContent = achievement.monthly
-      ? "Månad achievement unlocked!"
+      ? "Monthly achievement unlocked!"
       : "Achievement unlocked!";
   }
 
@@ -1600,7 +1742,7 @@ function showNextAchievementPopup() {
   spawnFloatingText(
     cx,
     cy - 50,
-    achievement.monthly ? "MÅNAD!" : "ACHIEVEMENT!",
+    achievement.monthly ? "MONTHLY!" : "ACHIEVEMENT!",
     "#ffd54a",
     1.4
   );
@@ -1654,11 +1796,11 @@ function updateMonthlyAchievementHUD() {
     const progress = getMonthlyKillProgress();
     const pct = Math.min(100, Math.round((progress / current.target) * 100));
     const progressText = unlocked
-      ? "Klar!"
-      : `${Math.min(progress, current.target).toLocaleString("sv-SE")} / ${current.target.toLocaleString("sv-SE")}`;
+      ? "Done!"
+      : `${Math.min(progress, current.target).toLocaleString("en-US")} / ${current.target.toLocaleString("en-US")}`;
 
     hudEl.innerHTML = `<div class="monthly-hud${unlocked ? " done" : ""}">
-  <div class="monthly-hud-header">📅 Månad · ${escapeHtml(current.monthLabel)}</div>
+  <div class="monthly-hud-header">📅 Month · ${escapeHtml(current.monthLabel)}</div>
   <div class="monthly-hud-name">${current.emoji} ${escapeHtml(current.name)}</div>
   <div class="monthly-hud-desc">${escapeHtml(current.desc)}</div>
   <div class="monthly-hud-bar-wrap"><div class="monthly-hud-bar" style="width:${unlocked ? 100 : pct}%"></div></div>
@@ -1669,10 +1811,10 @@ function updateMonthlyAchievementHUD() {
 
   if (upcoming) {
     hudEl.innerHTML = `<div class="monthly-hud upcoming">
-  <div class="monthly-hud-header">📅 Kommande · ${escapeHtml(upcoming.monthLabel)}</div>
+  <div class="monthly-hud-header">📅 Upcoming · ${escapeHtml(upcoming.monthLabel)}</div>
   <div class="monthly-hud-name">${upcoming.emoji} ${escapeHtml(upcoming.name)}</div>
   <div class="monthly-hud-desc">${escapeHtml(upcoming.desc)}</div>
-  <div class="monthly-hud-progress">Startar snart</div>
+  <div class="monthly-hud-progress">Starting soon</div>
 </div>`;
     return;
   }
@@ -1689,7 +1831,7 @@ function renderAchievementsList() {
     const current = getAchievementProgressValue(achievement);
     const pct = Math.min(100, Math.round((current / achievement.target) * 100));
     const progressText = unlocked
-      ? "Klar!"
+      ? "Done!"
       : `${Math.min(current, achievement.target)}/${achievement.target}`;
 
     return `<div class="achievement-card${unlocked ? " unlocked" : ""}">
@@ -1712,7 +1854,7 @@ function updateAchievementsUI() {
   const total = ACHIEVEMENTS.length;
 
   if (countEl) countEl.textContent = `${unlocked}/${total}`;
-  if (summaryEl) summaryEl.textContent = `${unlocked} av ${total} achievements`;
+  if (summaryEl) summaryEl.textContent = `${unlocked} of ${total} achievements`;
   renderAchievementsList();
 }
 
@@ -1755,6 +1897,21 @@ function getFeaturedTagHtml(rowName) {
   return `<span class="lb-featured-tag">${label}</span>`;
 }
 
+function getLeaderboardRoleSlug(role) {
+  return String(role || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function getLeaderboardRoleHtml(role) {
+  const label = String(role || "").trim();
+  if (!label) return "";
+  const slug = getLeaderboardRoleSlug(label) || "custom";
+  return `<span class="lb-role-tag lb-role-${slug}">${escapeHtml(label)}</span>`;
+}
+
 function renderCommunityPanel() {
   const giveawayEl = document.getElementById("giveaway-coming-soon");
   const featuredEl = document.getElementById("featured-creator");
@@ -1764,6 +1921,13 @@ function renderCommunityPanel() {
   if (giveawayEl) {
     giveawayEl.classList.toggle("hidden", !Boolean(giveaway.showComingSoon));
   }
+
+  const giveawayEyebrow = document.getElementById("giveaway-eyebrow");
+  const giveawayTitle = document.getElementById("giveaway-title");
+  const giveawayTeaser = document.getElementById("giveaway-teaser");
+  if (giveawayEyebrow && giveaway.eyebrow) giveawayEyebrow.textContent = giveaway.eyebrow;
+  if (giveawayTitle && giveaway.title) giveawayTitle.textContent = giveaway.title;
+  if (giveawayTeaser && giveaway.teaser) giveawayTeaser.textContent = giveaway.teaser;
 
   if (!featuredEl) return;
 
@@ -1783,7 +1947,7 @@ function renderCommunityPanel() {
   const tiktokLink = document.getElementById("featured-tiktok-link");
   const tiktokHandle = document.getElementById("featured-tiktok-handle");
 
-  const displayName = featured.displayName || featured.gameName || "Spelare";
+  const displayName = featured.displayName || featured.gameName || "Player";
   const handle = featured.tiktokHandle
     ? `@${String(featured.tiktokHandle).replace(/^@+/, "")}`
     : "TikTok";
@@ -1797,7 +1961,7 @@ function renderCommunityPanel() {
     tiktokLink.href = url;
     tiktokLink.setAttribute(
       "aria-label",
-      `Öppna ${displayName}s TikTok`
+      `Open ${displayName}'s TikTok`
     );
   }
 }
@@ -1806,12 +1970,14 @@ async function refreshCommunityPanel() {
   try {
     const response = await fetch("/api/community");
     if (response.ok) {
-      communityConfig = await response.json();
+      applyRuntimeConfigFromCommunity(await response.json());
     }
   } catch (error) {
     // Offline / gammal server — använd default communityConfig
   }
   renderCommunityPanel();
+  renderStartMenuAnnouncement();
+  updateFreeplayMenuState();
 }
 
 function renderLeaderboard(rows) {
@@ -1820,7 +1986,7 @@ function renderLeaderboard(rows) {
   if (!list) return;
 
   if (!rows || rows.length === 0) {
-    list.innerHTML = '<div class="lb-empty">Inga spelare än — bli först!</div>';
+    list.innerHTML = '<div class="lb-empty">No players yet — be the first!</div>';
     if (youEl) youEl.textContent = "";
     return;
   }
@@ -1835,16 +2001,21 @@ function renderLeaderboard(rows) {
       const crown = getLeaderboardCrownHtml(row.rank);
       const rankClass = row.rank <= 3 ? ` rank-${row.rank}` : "";
       const featuredTag = getFeaturedTagHtml(row.name);
-      return `<div class="lb-row${me}${rankClass}">
+      const roleHtml = getLeaderboardRoleHtml(row.role);
+      const roleClass = roleHtml ? " has-role" : "";
+      return `<div class="lb-row${me}${rankClass}${roleClass}">
   <div class="lb-rank-badge">${row.rank}</div>
   <div class="lb-row-body">
     <div class="lb-row-head">
-      <span class="lb-row-name">${crown}${escapeHtml(row.name)}</span>
+      <div class="lb-row-identity">
+        ${roleHtml}
+        <span class="lb-row-name">${crown}${escapeHtml(row.name)}</span>
+      </div>
       <span class="lb-row-tags">${featuredTag}<span class="lb-level-pill">Lv ${row.level}</span></span>
     </div>
     <div class="lb-row-stats">
-      <span class="lb-stat">Wave ${row.bestWave || 0}</span>
-      <span class="lb-stat">${formatHudNumber(row.kills || 0)} kills</span>
+      <span class="lb-stat">W${row.bestWave || 0}</span>
+      <span class="lb-stat">${formatHudNumber(row.kills || 0)} K</span>
     </div>
   </div>
 </div>`;
@@ -1899,13 +2070,13 @@ function normalizeNickname(value) {
 function validateNickname(value) {
   const name = normalizeNickname(value);
   if (name.length < 2) {
-    return "Nickname måste vara minst 2 tecken.";
+    return "Nickname must be at least 2 characters.";
   }
   if (name.length > 16) {
-    return "Nickname får max vara 16 tecken.";
+    return "Nickname must be at most 16 characters.";
   }
   if (!/^[a-zA-Z0-9 _\-åäöÅÄÖ]+$/.test(name)) {
-    return "Använd bara bokstäver, siffror, mellanslag, - eller _.";
+    return "Use only letters, numbers, spaces, - or _.";
   }
   return "";
 }
@@ -1927,7 +2098,14 @@ function clearAuthToken() {
   saveAuthToken("");
 }
 
+function refreshAuthTokenFromStorage() {
+  authToken = loadAuthToken();
+  return authToken;
+}
+
 async function authFetch(url, options = {}) {
+  refreshAuthTokenFromStorage();
+
   const headers = {
     ...(options.headers || {}),
     ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
@@ -1954,12 +2132,12 @@ function setAuthMode(mode) {
 
   if (loginTab) loginTab.classList.toggle("active", authMode === "login");
   if (registerTab) registerTab.classList.toggle("active", authMode === "register");
-  if (submitBtn) submitBtn.textContent = authMode === "register" ? "Skapa konto" : "Logga in";
+  if (submitBtn) submitBtn.textContent = authMode === "register" ? "Create account" : "Log in";
   if (hintEl) {
     hintEl.textContent =
       authMode === "register"
-        ? "Skapa konto med ditt namn och lösenord. Namnet blir ditt — ingen annan kan ta det. Har du spelat förut? Registrera samma namn så behåller du din progress."
-        : "Logga in med ditt användarnamn och lösenord.";
+        ? "Create an account with your username and password. Your name is yours — no one else can take it. Played before? Register the same name to keep your progress."
+        : "Log in with your username and password.";
   }
   if (playerPasswordInput) {
     playerPasswordInput.autocomplete = authMode === "register" ? "new-password" : "current-password";
@@ -2005,7 +2183,7 @@ async function submitAuth() {
     return;
   }
   if (password.length < 6) {
-    setAuthError("Lösenord måste vara minst 6 tecken.");
+    setAuthError("Password must be at least 6 characters.");
     return;
   }
 
@@ -2021,13 +2199,13 @@ async function submitAuth() {
     const payload = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      setAuthError(payload.error || "Kunde inte logga in just nu.");
+      setAuthError(payload.error || "Could not log in right now.");
       return;
     }
 
     await completeLogin(payload.username, payload.token);
   } catch (error) {
-    setAuthError("Kunde inte nå servern. Försök igen.");
+    setAuthError("Could not reach the server. Try again.");
   }
 }
 
@@ -2108,7 +2286,8 @@ async function logoutAccount() {
   clearAuthToken();
   playerName = "";
   canViewFeedbackInbox = false;
-  updateFeedbackAdminUI(0);
+  isGameAdmin = false;
+  updateGameAdminUI(0);
   resetSessionState();
   hideStartMenu();
   hideTutorialOverlay();
@@ -2146,15 +2325,32 @@ function updateStartMenuUI() {
   const progress = getXpProgress(player.totalXp);
   const achievements = getUnlockedAchievementCount();
 
-  if (nameEl) nameEl.textContent = playerName || "Spelare";
+  if (nameEl) nameEl.textContent = playerName || "Player";
+  renderStartMenuAnnouncement();
+  updateFreeplayMenuState();
 
   if (statsEl) {
     statsEl.innerHTML = `
-      <div class="stat-card accent"><span class="stat-label">Level</span><strong class="stat-value">${formatHudNumber(progress.level)}</strong></div>
-      <div class="stat-card"><span class="stat-label">Bästa wave</span><strong class="stat-value">${formatHudNumber(bestWave)}</strong></div>
-      <div class="stat-card"><span class="stat-label">Kills</span><strong class="stat-value">${formatHudNumber(player.kills)}</strong></div>
-      <div class="stat-card"><span class="stat-label">Skill Points</span><strong class="stat-value">${formatHudNumber(player.skillPoints)}</strong></div>
-      <div class="stat-card wide"><span class="stat-label">Achievements</span><strong class="stat-value">${achievements}/${ACHIEVEMENTS.length}</strong></div>
+      <div class="stat-card accent stat-card-fun">
+        <span class="stat-icon">💚</span>
+        <div class="stat-copy"><span class="stat-label">Level</span><strong class="stat-value">${formatHudNumber(progress.level)}</strong></div>
+      </div>
+      <div class="stat-card stat-card-fun">
+        <span class="stat-icon">🌊</span>
+        <div class="stat-copy"><span class="stat-label">Best Wave</span><strong class="stat-value">${formatHudNumber(bestWave)}</strong></div>
+      </div>
+      <div class="stat-card stat-card-fun">
+        <span class="stat-icon">💀</span>
+        <div class="stat-copy"><span class="stat-label">Kills</span><strong class="stat-value">${formatHudNumber(player.kills)}</strong></div>
+      </div>
+      <div class="stat-card stat-card-fun">
+        <span class="stat-icon">⚡</span>
+        <div class="stat-copy"><span class="stat-label">Skill Points</span><strong class="stat-value">${formatHudNumber(player.skillPoints)}</strong></div>
+      </div>
+      <div class="stat-card wide stat-card-fun">
+        <span class="stat-icon">🏅</span>
+        <div class="stat-copy"><span class="stat-label">Achievements</span><strong class="stat-value">${achievements}/${ACHIEVEMENTS.length}</strong></div>
+      </div>
     `;
   }
 }
@@ -2174,38 +2370,38 @@ const TUTORIAL_DONE_KEY = "hulkLivesTutorialDone";
 const TUTORIAL_STEPS = [
   {
     icon: "💀",
-    title: "Välkommen till HulkLives!",
-    body: "Zombie survival i top-down — överlev så många waves du kan och klättra på leaderboarden.",
+    title: "Welcome to HulkLives!",
+    body: "Top-down zombie survival — survive as many waves as you can and climb the leaderboard.",
     keys: []
   },
   {
     icon: "⌨️",
-    title: "Rör dig",
-    body: "Använd WASD för att röra gubben. Håll koll på kanterna — zombier kommer från alla håll.",
+    title: "Move",
+    body: "Use WASD to move your character. Watch the edges — zombies come from every direction.",
     keys: ["W", "A", "S", "D"]
   },
   {
     icon: "🎯",
-    title: "Sikta & skjut",
-    body: "Musen siktar automatiskt. Håll vänsterklick eller klicka för att skjuta mot zombierna.",
-    keys: ["🖱️ Sikta", "🔫 Skjut"]
+    title: "Aim & shoot",
+    body: "The mouse aims automatically. Hold left click or click to shoot zombies.",
+    keys: ["🖱️ Aim", "🔫 Shoot"]
   },
   {
     icon: "🌊",
     title: "Waves",
-    body: "Döda alla zombier i en wave för att gå vidare. Var 10:e wave kommer en stor boss anpassad efter din level och upgrades.",
+    body: "Kill every zombie in a wave to advance. Every 10th wave brings a big boss scaled to your level and upgrades.",
     keys: []
   },
   {
     icon: "⭐",
     title: "Skill Points & shop",
-    body: "Var 5:e kill ger 1 SP. Öppna shoppen i menyn för HP, bullet speed och nya vapen.",
+    body: "Every 5th kill gives 1 SP. Open the shop from the menu for HP, bullet speed, and new weapons.",
     keys: ["🛠 Shop"]
   },
   {
     icon: "▶️",
-    title: "Redo att köra!",
-    body: "Byt vapen med 1–4 under spelet. Kolla shoppen, tryck STARTA SPEL — och överlev!",
+    title: "Ready to go!",
+    body: "Switch weapons with 1–4 during a run. Check the shop, press START GAME — and survive!",
     keys: ["1", "2", "3", "4"]
   }
 ];
@@ -2236,7 +2432,7 @@ function renderTutorialStep() {
 
   if (iconEl) iconEl.textContent = step.icon;
   if (labelEl) {
-    labelEl.textContent = `Steg ${tutorialStepIndex + 1} av ${TUTORIAL_STEPS.length} · klicka Nästa`;
+    labelEl.textContent = `Step ${tutorialStepIndex + 1} of ${TUTORIAL_STEPS.length} · click Next`;
   }
   if (titleEl) titleEl.textContent = step.title;
   if (bodyEl) bodyEl.textContent = step.body;
@@ -2258,8 +2454,8 @@ function renderTutorialStep() {
   }
 
   const isLast = tutorialStepIndex >= TUTORIAL_STEPS.length - 1;
-  if (nextBtn) nextBtn.textContent = isLast ? "Till menyn →" : "Nästa →";
-  if (skipBtn) skipBtn.textContent = tutorialReturnToMenu ? "Stäng" : "Hoppa över";
+  if (nextBtn) nextBtn.textContent = isLast ? "To menu →" : "Next →";
+  if (skipBtn) skipBtn.textContent = tutorialReturnToMenu ? "Close" : "Skip";
 }
 
 function showTutorialOverlay() {
@@ -2277,7 +2473,7 @@ function finishTutorial() {
   markTutorialComplete();
   hideTutorialOverlay();
   showStartMenu();
-  showMilestone("📖 Tutorial klar — kör hårt! 💀");
+  showMilestone("📖 Tutorial complete — go get em! 💀");
 }
 
 function skipTutorial() {
@@ -2327,8 +2523,16 @@ function hslColor(h, s, l, a) {
   return `hsl(${h}, ${s}%, ${l}%)`;
 }
 
+function isFreeplayMode() {
+  return gameMode === "freeplay";
+}
+
+function isCampaignMode() {
+  return gameMode !== "freeplay";
+}
+
 function getArenaTheme() {
-  const hue = ARENA_HUE;
+  const hue = isFreeplayMode() ? 168 : ARENA_HUE;
   const accent = hslColor(hue, 92, 55);
   const bg = hslColor(hue, 58, 8);
   const bgAlt = hslColor(hue, 45, 14);
@@ -2343,7 +2547,7 @@ function getArenaTheme() {
     border: accent,
     accent,
     hue,
-    patternStyle: 0,
+    patternStyle: isFreeplayMode() ? 2 : 0,
     grass: hslColor(hue, 48, 22),
     grassDark: hslColor(hue, 42, 17),
     grassLight: hslColor(hue, 55, 28),
@@ -2464,6 +2668,7 @@ function findBulletHitZombieIndex(bullet) {
   let bestDistSq = Infinity;
 
   for (let j = 0; j < zombies.length; j++) {
+    if (bullet.hitZombies?.has(zombies[j])) continue;
     const hit = getBulletZombieHitInfo(bullet, zombies[j]);
     if (!hit) continue;
 
@@ -3021,7 +3226,10 @@ function getEquippedWeapon() {
 }
 
 function getShootCooldown() {
-  return Math.max(4, Math.round(SHOOT_COOLDOWN * getEquippedWeapon().cooldownMult));
+  return Math.max(
+    3,
+    Math.round(SHOOT_COOLDOWN * getEquippedWeapon().cooldownMult * getRunFireRateMult())
+  );
 }
 
 function getWeaponLevel(weaponId) {
@@ -3054,7 +3262,7 @@ function syncPlayerDamageFromWeapon() {
 }
 
 function getBulletDamage(weapon) {
-  return getWeaponPower(weapon.id);
+  return Math.round(getWeaponPower(weapon.id) * getRunDamageMult());
 }
 
 function isWeaponUnlocked(weaponId) {
@@ -3069,7 +3277,7 @@ function selectWeapon(weaponId) {
   equippedWeaponId = weaponId;
   const weapon = getEquippedWeapon();
   syncPlayerDamageFromWeapon();
-  showMilestone(`${weapon.emoji} Vapen: ${weapon.name}`);
+  showMilestone(`${weapon.emoji} Weapon: ${weapon.name}`);
   saveProgress();
   updateUI();
   return true;
@@ -3086,7 +3294,7 @@ function unlockWeapon(weaponId) {
   unlockedWeapons.add(weaponId);
   equippedWeaponId = weaponId;
   syncPlayerDamageFromWeapon();
-  showMilestone(`${weapon.emoji} ${weapon.name} upplåst!`);
+  showMilestone(`${weapon.emoji} ${weapon.name} unlocked!`);
   saveProgress();
   updateUI();
   return true;
@@ -3123,10 +3331,10 @@ function renderWeaponShopList(force = false) {
 
     let action = "";
     if (unlocked) {
-      action = `<button type="button" class="weapon-shop-btn equip${equipped ? " active" : ""}" data-weapon-action="equip" data-weapon-id="${weapon.id}" ${equipped ? "disabled" : ""}>${equipped ? "Utrustad" : "Välj"}</button>`;
-      action += `<button type="button" class="weapon-shop-btn upgrade" data-weapon-action="upgrade" data-weapon-id="${weapon.id}" ${canUpgrade ? "" : "disabled"}>Uppgradera</button>`;
+      action = `<button type="button" class="weapon-shop-btn equip${equipped ? " active" : ""}" data-weapon-action="equip" data-weapon-id="${weapon.id}" ${equipped ? "disabled" : ""}>${equipped ? "Equipped" : "Select"}</button>`;
+      action += `<button type="button" class="weapon-shop-btn upgrade" data-weapon-action="upgrade" data-weapon-id="${weapon.id}" ${canUpgrade ? "" : "disabled"}>Upgrade</button>`;
     } else {
-      action = `<button type="button" class="weapon-shop-btn buy" data-weapon-action="buy" data-weapon-id="${weapon.id}" ${canBuy ? "" : "disabled"}>Köp ${weapon.unlockCost} SP</button>`;
+      action = `<button type="button" class="weapon-shop-btn buy" data-weapon-action="buy" data-weapon-id="${weapon.id}" ${canBuy ? "" : "disabled"}>Buy ${weapon.unlockCost} SP</button>`;
     }
 
     return `<div class="weapon-shop-row${equipped ? " equipped" : ""}">
@@ -3135,7 +3343,7 @@ function renderWeaponShopList(force = false) {
     <div class="weapon-shop-actions">${action}</div>
   </div>
   <div class="weapon-shop-desc">${escapeHtml(weapon.desc)}</div>
-  <div class="weapon-shop-meta">${unlocked ? `Nivå ${level} · ${power} skada` : "Lås upp för att uppgradera"}</div>
+  <div class="weapon-shop-meta">${unlocked ? `Level ${level} · ${power} damage` : "Unlock to upgrade"}</div>
 </div>`;
   }).join("");
 }
@@ -3160,10 +3368,35 @@ function handleWeaponHotkey(key) {
 }
 
 function damageZombie(zombie, index, hitInfo, bulletDamage) {
-  const damage = bulletDamage ?? player.damage;
+  const damage = Math.round((bulletDamage ?? player.damage) * getRunDamageMult());
   zombie.hp -= damage;
+
+  const cx = zombie.x + zombie.size / 2;
+  const cy = zombie.y + zombie.size / 2;
+  spawnDamageNumber(cx, cy - zombie.size * 0.15, damage, {
+    big: zombie.tier === "waveBoss" || zombie.isWaveBoss || zombie.tier === "boss"
+  });
+  addScreenShake(zombie.tier === "waveBoss" || zombie.isWaveBoss ? 0.55 : 0.12);
+
+  if (zombie.isWaveBoss || zombie.tier === "waveBoss") {
+    updateWaveBossPhases(zombie);
+  }
+
   if (zombie.hp <= 0) {
+    if (zombie.archetype === "exploder") {
+      triggerExploderDeath(zombie);
+    }
+
+    const wasElite =
+      zombie.tier !== "normal" ||
+      zombie.isWaveBoss ||
+      zombie.archetype === "exploder" ||
+      zombie.archetype === "spitter";
+
     spawnBloodBurst(zombie, hitInfo);
+    if (wasElite) triggerHitStop(zombie.isWaveBoss ? 4 : 2);
+    if (zombie.isWaveBoss || zombie.tier === "waveBoss") addScreenShake(6);
+    playZombieDeathSound(zombie);
     zombies.splice(index, 1);
     onZombieKilled(zombie);
   }
@@ -3194,7 +3427,8 @@ function pushBullet(x, y, dx, dy, speed, options = {}) {
     speed,
     angle: Math.atan2(dy, dx),
     damage: options.damage,
-    color
+    color,
+    pierceLeft: getRunPierceCount()
   });
 }
 
@@ -3410,7 +3644,7 @@ function showBonusOffer() {
 
 function maybeSpawnBonusOffer() {
   if (bonusOffer || !gameRunning || paused) return;
-  if (Math.random() >= BONUS_OFFER_CHANCE) return;
+  if (Math.random() >= getBonusOfferChance()) return;
 
   showBonusOffer();
 }
@@ -3437,13 +3671,13 @@ function tryBonusOffer() {
   const result = document.getElementById("bonus-offer-result");
   if (btn) btn.disabled = true;
 
-  const won = Math.random() < BONUS_WIN_CHANCE;
+  const won = Math.random() < getBonusWinChance();
   if (won) {
     player.skillPoints += BONUS_REWARD_SP;
     if (result) result.textContent = `+${BONUS_REWARD_SP} skill points!`;
     showMilestone(`🎁 +${BONUS_REWARD_SP} skill points!`);
   } else if (result) {
-    result.textContent = "Ingen reward...";
+    result.textContent = "No reward...";
   }
 
   saveProgress();
@@ -3525,7 +3759,7 @@ function maybeSpawnHpPickups(force = false) {
 
   lastHpPickupSpawnAt = now;
   if (hpPickups.length === 1) {
-    showMilestone("❤️ HP på banan — spring och hämta!");
+    showMilestone("❤️ HP on the field — run and grab it!");
   }
 }
 
@@ -3578,6 +3812,8 @@ function applyDamageToPlayer(amount) {
   const damage = Math.max(0, Math.round(Number(amount) || 0));
   if (damage <= 0) return;
   player.hp -= damage;
+  hurtFlash = Math.min(1, hurtFlash + 0.28);
+  addScreenShake(2.2);
 }
 
 function drawHpPickups() {
@@ -3652,9 +3888,13 @@ function showCenterHudBriefly() {
   const centerEventEmoji = document.getElementById("center-event-emoji");
   const centerEventName = document.getElementById("center-event-name");
   const event = getCurrentEvent();
-  if (centerWave) centerWave.innerText = wave;
-  if (centerEventEmoji) centerEventEmoji.innerText = event.emoji;
-  if (centerEventName) centerEventName.innerText = event.name;
+  if (centerWave) centerWave.innerText = isFreeplayMode() ? "∞" : wave;
+  if (centerEventEmoji) centerEventEmoji.innerText = isFreeplayMode() ? "♾️" : event.emoji;
+  if (centerEventName) {
+    centerEventName.innerText = isFreeplayMode()
+      ? `${getFreeplayPhaseDef().emoji} ${getFreeplayPhaseDef().label}`
+      : event.name;
+  }
 
   hud.classList.add("visible");
   clearTimeout(centerHudTimer);
@@ -3924,6 +4164,19 @@ function screenToWorld(screenX, screenY) {
 
 }
 
+function clientToView(clientX, clientY) {
+  if (!c) return { x: 0, y: 0 };
+
+  const rect = c.getBoundingClientRect();
+  const scaleX = rect.width > 0 ? VIEW_WIDTH / rect.width : 1;
+  const scaleY = rect.height > 0 ? VIEW_HEIGHT / rect.height : 1;
+
+  return {
+    x: (clientX - rect.left) * scaleX,
+    y: (clientY - rect.top) * scaleY
+  };
+}
+
 
 
 function updateCamera() {
@@ -3988,6 +4241,8 @@ function finishWaveTransition() {
   wave += 1;
   onWaveCleared(clearedWave);
 
+  if (maybeOfferRunModifier(clearedWave)) return;
+
   if (!paused && gameRunning) {
     startWave();
   }
@@ -3999,13 +4254,13 @@ function checkWaveMilestonesOnStart() {
   if (isWaveBossWave()) {
     const profile = getPlayerPowerProfile();
     showMilestone(
-      `👹 WAVE BOSS! Level ${profile.level} · ~${getWaveBossHitCount()} träffar · stor fiende inkommande`
+      `👹 WAVE BOSS! Level ${profile.level} · ~${getWaveBossHitCount()} hits · large enemy incoming`
     );
     return;
   }
 
-  if (wave === 10) showMilestone("Medel-fas — håll koll!");
-  if (wave === 26) showMilestone("Hård fas — kaos incoming!");
+  if (wave === 10) showMilestone("Mid game — stay sharp!");
+  if (wave === 26) showMilestone("Hard mode — chaos incoming!");
 }
 
 
@@ -4361,14 +4616,14 @@ function syncSaveToServer({ quiet = true } = {}) {
     .then(async (response) => {
       if (response.status === 401) {
         clearAuthToken();
-        showMilestone("Session utgången — logga in igen");
+        showMilestone("Session expired — log in again");
         showAuthScreen("login");
         return false;
       }
       if (response.status === 403 || response.status === 429) {
         if (!quiet) {
           const body = await response.json().catch(() => ({}));
-          showMilestone(body.error || "Save avvisad — ogiltig progression");
+          showMilestone(body.error || "Save rejected — invalid progression");
         }
         return false;
       }
@@ -4415,6 +4670,8 @@ function getZombiePlayerDamage(z) {
           : z.tier === "medium"
             ? 1.12
             : 1;
+  const archetypeMult =
+    z.archetype === "exploder" ? 1.12 : z.archetype === "spitter" ? 0.92 : z.archetype === "runner" ? 0.88 : 1;
   const percentByTier =
     z.tier === "waveBoss" || z.isWaveBoss
       ? 0.0022
@@ -4430,7 +4687,7 @@ function getZombiePlayerDamage(z) {
   const scaled = base * Math.pow(profile.powerMult, 0.82);
   const threatScale = 0.82 + Math.min(0.95, profile.powerMult * 0.055);
   const percentFloor = player.maxHp * percentByTier * threatScale;
-  const raw = Math.max(scaled, percentFloor);
+  const raw = Math.max(scaled, percentFloor) * archetypeMult;
 
   return Math.max(2, Math.round(raw * ZOMBIE_DAMAGE_TUNE));
 }
@@ -4596,6 +4853,7 @@ function spawnWaveBoss() {
     tier: "waveBoss",
     strength: "strong",
     isWaveBoss: true,
+    bossPhase: 1,
     size: stats.size,
     speed: stats.speed,
     damage: stats.damage,
@@ -4603,6 +4861,322 @@ function spawnWaveBoss() {
     facingAngle: Math.atan2(toPlayerY, toPlayerX),
     jitter: Math.random() * 0.5 + 0.5
   });
+}
+
+const FREEPLAY_BASE_SPAWN_INTERVAL = 78;
+const FREEPLAY_SECONDS_TICK = 60;
+const FREEPLAY_COMBO_TIMEOUT = 52;
+
+const FREEPLAY_PHASE_DEFS = {
+  calm: {
+    label: "Calm",
+    emoji: "🌙",
+    msg: "Catch your breath",
+    spawnMult: 0.32,
+    batch: 0,
+    maxMult: 0.65,
+    fastChance: 0.08,
+    arenaTint: "rgba(80,120,255,0.06)"
+  },
+  steady: {
+    label: "Steady",
+    emoji: "🌿",
+    msg: "Keep moving",
+    spawnMult: 1,
+    batch: 1,
+    maxMult: 1,
+    fastChance: 0.18,
+    arenaTint: null
+  },
+  surge: {
+    label: "Surge!",
+    emoji: "🔥",
+    msg: "Horde incoming!",
+    spawnMult: 2.6,
+    batch: 5,
+    maxMult: 1.45,
+    fastChance: 0.34,
+    arenaTint: "rgba(255,70,50,0.12)"
+  },
+  golden: {
+    label: "Gold Rush",
+    emoji: "✨",
+    msg: "Golden targets — combo heals!",
+    spawnMult: 1.35,
+    batch: 2,
+    maxMult: 1.05,
+    fastChance: 0.1,
+    goldenChance: 0.72,
+    arenaTint: "rgba(255,210,80,0.1)"
+  },
+  boss: {
+    label: "Boss!",
+    emoji: "👹",
+    msg: "Big boss — scaled to your power",
+    spawnMult: 0.5,
+    batch: 1,
+    maxMult: 0.8,
+    fastChance: 0.1,
+    arenaTint: "rgba(180,80,255,0.14)",
+    spawnBoss: true
+  }
+};
+
+function getFreeplayPhaseDef() {
+  return FREEPLAY_PHASE_DEFS[freeplayPhase] || FREEPLAY_PHASE_DEFS.steady;
+}
+
+function pickNextFreeplayPhase() {
+  if (freeplayPhase === "surge") return "calm";
+  if (freeplayPhase === "golden") return "steady";
+  if (freeplayPhase === "boss") return "steady";
+
+  const roll = Math.random();
+  const sinceBoss = freeplayRunSeconds - freeplayLastBossAt;
+  const bossReady =
+    freeplayRunSeconds >= 45 &&
+    sinceBoss >= 75 &&
+    !zombies.some((z) => z.freeplayBoss);
+
+  if (bossReady && roll < 0.16) return "boss";
+  if (roll < 0.1) return "golden";
+  if (roll < 0.38) return "surge";
+  if (roll < 0.62) return "calm";
+  return "steady";
+}
+
+function getFreeplayBossStats() {
+  const profile = getPlayerPowerProfile();
+  const playerDamage = getEffectivePlayerDamage();
+  const hits = Math.max(10, Math.round(getWaveBossHitCount() * 0.7));
+  let hp = Math.round(playerDamage * hits * 0.3);
+  hp = Math.max(
+    hp,
+    Math.round(playerDamage * (8 + profile.level * 0.6 + profile.upgrades * 0.16))
+  );
+
+  const size = Math.min(
+    WAVE_BOSS_MAX_SIZE - 8,
+    Math.round(getWaveBossSize() * 0.9)
+  );
+  const powerEase = clamp(profile.powerMult * 0.04, 0.75, 1.35);
+  const speed = clamp(
+    (1.25 + profile.level * 0.014 + freeplayRunSeconds * 0.0018) * powerEase,
+    1.05,
+    2.8
+  );
+  const damage = Math.round(
+    (9 + freeplayRunSeconds * 0.045 + profile.level * 0.42 + profile.upgrades * 0.12) *
+      clamp(0.8 + profile.powerMult * 0.05, 0.8, 1.65)
+  );
+
+  return { hp, size, speed, damage, hits };
+}
+
+function spawnFreeplayBoss() {
+  if (zombies.some((z) => z.freeplayBoss)) return false;
+
+  const stats = getFreeplayBossStats();
+  const playerCenterX = player.x + PLAYER_SIZE / 2;
+  const playerCenterY = player.y + PLAYER_SIZE / 2;
+  const spawnX = clamp(
+    playerCenterX - stats.size / 2 + (Math.random() - 0.5) * 140,
+    40,
+    WORLD_WIDTH - stats.size - 40
+  );
+  const spawnY = clamp(playerCenterY - stats.size - 120, 40, WORLD_HEIGHT - stats.size - 40);
+  const toPlayerX = playerCenterX - (spawnX + stats.size / 2);
+  const toPlayerY = playerCenterY - (spawnY + stats.size / 2);
+
+  zombies.push({
+    x: spawnX,
+    y: spawnY,
+    hp: stats.hp,
+    maxHp: stats.hp,
+    tier: "waveBoss",
+    strength: "strong",
+    isWaveBoss: true,
+    freeplayBoss: true,
+    freeplay: true,
+    bossPhase: 1,
+    size: stats.size,
+    speed: stats.speed,
+    damage: stats.damage,
+    hitCooldown: 0,
+    facingAngle: Math.atan2(toPlayerY, toPlayerX),
+    jitter: Math.random() * 0.4 + 0.55
+  });
+
+  freeplayLastBossAt = freeplayRunSeconds;
+  showMilestone(`👹 Freeplay boss! ~${stats.hits} hits · scaled to your build`);
+  if (typeof playBossRoar === "function") playBossRoar();
+  addScreenShake(7);
+  return true;
+}
+
+function setFreeplayPhase(phase) {
+  freeplayPhase = FREEPLAY_PHASE_DEFS[phase] ? phase : "steady";
+  freeplayPhaseTimer = 0;
+  const def = getFreeplayPhaseDef();
+  const baseDuration = {
+    calm: 210,
+    steady: 270,
+    surge: 105,
+    golden: 165,
+    boss: 240
+  }[freeplayPhase];
+  freeplayPhaseDuration = baseDuration + Math.floor(Math.random() * 90);
+  freeplayArenaTint = def.arenaTint || null;
+
+  showMilestone(`${def.emoji} ${def.label}${def.msg ? ` — ${def.msg}` : ""}`);
+  if (def.spawnBoss) {
+    spawnFreeplayBoss();
+  }
+  if (freeplayPhase === "surge") {
+    addScreenShake(5);
+    for (let i = 0; i < 7; i++) spawnFreeplayZombie();
+  }
+}
+
+function getFreeplayMaxZombies() {
+  const def = getFreeplayPhaseDef();
+  const base = 18 + Math.floor(freeplayRunSeconds / 20);
+  return clamp(Math.round(base * def.maxMult), 12, 42);
+}
+
+function getFreeplaySpawnInterval() {
+  const def = getFreeplayPhaseDef();
+  return Math.max(22, Math.round(FREEPLAY_BASE_SPAWN_INTERVAL / Math.max(0.25, def.spawnMult)));
+}
+
+function getFreeplaySpawnPoint(size) {
+  const margin = 36;
+  const pcx = player.x + PLAYER_SIZE / 2;
+  const pcy = player.y + PLAYER_SIZE / 2;
+
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const edge = Math.floor(Math.random() * 4);
+    let x;
+    let y;
+
+    if (edge === 0) {
+      x = Math.random() * (WORLD_WIDTH - size);
+      y = margin;
+    } else if (edge === 1) {
+      x = WORLD_WIDTH - size - margin;
+      y = Math.random() * (WORLD_HEIGHT - size);
+    } else if (edge === 2) {
+      x = Math.random() * (WORLD_WIDTH - size);
+      y = WORLD_HEIGHT - size - margin;
+    } else {
+      x = margin;
+      y = Math.random() * (WORLD_HEIGHT - size);
+    }
+
+    x = clamp(x, margin, WORLD_WIDTH - size - margin);
+    y = clamp(y, margin, WORLD_HEIGHT - size - margin);
+
+    const dist = Math.hypot(pcx - (x + size / 2), pcy - (y + size / 2));
+    if (dist >= 260) return { x, y };
+  }
+
+  return {
+    x: Math.random() * (WORLD_WIDTH - size),
+    y: Math.random() * (WORLD_HEIGHT - size)
+  };
+}
+
+function spawnFreeplayZombie(options = {}) {
+  const maxOnScreen = getFreeplayMaxZombies();
+  if (zombies.length >= maxOnScreen) return;
+
+  const def = getFreeplayPhaseDef();
+  const fast = Math.random() < (options.fastChance ?? def.fastChance);
+  const golden = Boolean(options.golden) || (def.goldenChance && Math.random() < def.goldenChance);
+  const size = Math.round(ZOMBIE_DRAW_SIZE * (fast ? 0.76 : golden ? 0.9 : 0.94));
+  const speed = fast
+    ? 1.12 + Math.random() * 0.42
+    : golden
+      ? 0.48 + Math.random() * 0.18
+      : 0.38 + Math.random() * 0.28;
+  const playerDamage = getEffectivePlayerDamage();
+  const hp = Math.max(
+    1,
+    Math.round(playerDamage * (fast ? 0.42 : golden ? 0.22 : 0.28) * (0.85 + Math.random() * 0.2))
+  );
+  const { x, y } = getFreeplaySpawnPoint(size);
+  const pcx = player.x + PLAYER_SIZE / 2;
+  const pcy = player.y + PLAYER_SIZE / 2;
+  const toPlayerX = pcx - (x + size / 2);
+  const toPlayerY = pcy - (y + size / 2);
+
+  zombies.push({
+    x,
+    y,
+    hp,
+    maxHp: hp,
+    tier: "normal",
+    strength: "weak",
+    archetype: fast ? "runner" : null,
+    golden,
+    size,
+    speed,
+    damage: Math.round(4 + freeplayRunSeconds * 0.04),
+    hitCooldown: 0,
+    facingAngle: Math.atan2(toPlayerY, toPlayerX),
+    jitter: fast ? Math.random() * 0.35 + 0.75 : Math.random() * 0.25 + 0.55,
+    freeplay: true
+  });
+}
+
+function spawnFreeplayBatch() {
+  const def = getFreeplayPhaseDef();
+  let batch = def.batch;
+  if (freeplayPhase === "calm") {
+    batch = Math.random() < 0.42 ? 1 : 0;
+  }
+  for (let i = 0; i < batch; i++) {
+    spawnFreeplayZombie();
+  }
+}
+
+function updateFreeplayMode() {
+  if (!isFreeplayMode() || paused) return;
+
+  freeplaySpawnTick += 1;
+  if (freeplayComboTimer > 0) {
+    freeplayComboTimer -= 1;
+    if (freeplayComboTimer <= 0) {
+      freeplayCombo = 0;
+    }
+  }
+
+  if (freeplaySpawnTick % FREEPLAY_SECONDS_TICK === 0) {
+    freeplayRunSeconds += 1;
+  }
+
+  freeplayPhaseTimer += 1;
+  if (freeplayPhaseTimer >= freeplayPhaseDuration) {
+    setFreeplayPhase(pickNextFreeplayPhase());
+  }
+
+  if (freeplaySpawnTick % getFreeplaySpawnInterval() === 0) {
+    spawnFreeplayBatch();
+  }
+}
+
+function startFreeplayMode() {
+  wave = 1;
+  waveInProgress = true;
+  freeplaySpawnTick = 0;
+  freeplayRunSeconds = 0;
+  freeplayCombo = 0;
+  freeplayComboTimer = 0;
+  freeplayBestCombo = 0;
+  freeplayLastBossAt = -999;
+  setFreeplayPhase("steady");
+  spawnFreeplayBatch();
+  showCenterHudBriefly();
 }
 
 function spawnWave() {
@@ -4669,10 +5243,12 @@ function spawnWave() {
   }
 
   const strongIndices = pickStrongZombieIndices(specs);
+  assignWaveArchetypes(specs);
 
   specs.forEach((spec, i) => {
     const strength = strongIndices.has(i) ? "strong" : "weak";
-    const hp = getZombieHpForTier(spec.tier, waveScale, strength);
+    let hp = getZombieHpForTier(spec.tier, waveScale, strength);
+    hp = applyArchetypeHpMult(spec, hp);
 
 
 
@@ -4691,6 +5267,7 @@ function spawnWave() {
       maxHp: hp,
       tier: spec.tier,
       strength,
+      archetype: spec.archetype || null,
 
       size: spec.size,
 
@@ -4716,6 +5293,11 @@ function spawnWave() {
 
 
 function startWave() {
+  if (isFreeplayMode()) {
+    startFreeplayMode();
+    updateUI();
+    return;
+  }
   syncWaveEvent(true);
   waveInProgress = true;
   checkWaveMilestonesOnStart();
@@ -4791,14 +5373,14 @@ function closeAllRunModals() {
 function pauseForRunModal(reason) {
   if (gameRunning && !isGameOverVisible() && !paused) {
     setGamePaused(true, reason);
-    showMilestone("Spelet pausat");
+    showMilestone("Game paused");
   }
 }
 
 function resumeFromRunModal(reason) {
   if (gameRunning && !isGameOverVisible() && paused && pauseReason === reason) {
     setGamePaused(false);
-    showMilestone("▶ Fortsätter");
+    showMilestone("▶ Resuming");
   }
 }
 
@@ -4840,7 +5422,7 @@ function updateShopControls() {
 
   if (pauseBtn) {
     pauseBtn.style.display = showRunControls ? "flex" : "none";
-    pauseBtn.textContent = paused ? "▶ Fortsätt" : "⏸ Pausa";
+    pauseBtn.textContent = paused ? "▶ Resume" : "⏸ Pause";
   }
 
   if (menuBtn) {
@@ -4877,7 +5459,7 @@ function ensureShopAccessible() {
 
   if (gameRunning && !isGameOverVisible() && !paused) {
     setGamePaused(true, "shop");
-    showMilestone("Shop öppen — spelet pausat");
+    showMilestone("Shop open — game paused");
   }
 
   return canUseSkillShop();
@@ -4904,14 +5486,14 @@ const SHOP_UPGRADE_INFO = {
     title: "❤️ HP",
     desc: "+50 max HP per skill point",
     preview(count) {
-      return `+${count * 50} max HP (nuvarande nivå +${count})`;
+      return `+${count * 50} max HP (current level +${count})`;
     }
   },
   bulletSpeed: {
     title: "💥 Bullet Speed",
     desc: "+1 bullet speed per skill point",
     preview(count) {
-      return `+${count} bullet speed (nuvarande nivå +${count})`;
+      return `+${count} bullet speed (current level +${count})`;
     }
   }
 };
@@ -4924,7 +5506,7 @@ function getWeaponUpgradePreview(weaponId, count) {
   const current = getWeaponPower(weaponId);
   const nextLevel = getWeaponLevel(weaponId) + count;
   const next = Math.max(1, Math.round((1 + nextLevel) * weapon.damageMult));
-  return `+${count} nivå · skada ${current} → ${next}`;
+  return `+${count} level · damage ${current} → ${next}`;
 }
 
 function applyUpgrades(type, count) {
@@ -4964,7 +5546,7 @@ function openWeaponUpgradeMenu(weaponId) {
 
   if (titleEl) titleEl.textContent = `${weapon.emoji} ${weapon.name}`;
   if (descEl) {
-    descEl.textContent = `+1 skada per nivå (nu: nivå ${getWeaponLevel(weaponId)}, ${getWeaponPower(weaponId)} skada)`;
+    descEl.textContent = `+1 damage per level (now: level ${getWeaponLevel(weaponId)}, ${getWeaponPower(weaponId)} damage)`;
   }
   if (slider) {
     slider.min = "1";
@@ -5053,7 +5635,7 @@ function confirmShopUpgrade() {
     if (spent <= 0) return;
 
     const weapon = getWeaponById(shopUpgradeWeaponId);
-    showMilestone(`${weapon.emoji} ${weapon.name} — +${spent} nivå`);
+    showMilestone(`${weapon.emoji} ${weapon.name} — +${spent} level`);
     saveProgress();
     closeShopUpgradeMenu();
     updateUI();
@@ -5066,7 +5648,7 @@ function confirmShopUpgrade() {
   if (spent <= 0) return;
 
   const info = SHOP_UPGRADE_INFO[shopUpgradeType];
-  showMilestone(`🛠 ${info.title} — ${spent} SP använda`);
+  showMilestone(`🛠 ${info.title} — ${spent} SP spent`);
   saveProgress();
   closeShopUpgradeMenu();
   updateUI();
@@ -5105,20 +5687,36 @@ function updateUI() {
     xpFill.style.width = `${Math.max(0, Math.min(100, pct))}%`;
   }
   if (hudWaveLine) {
-    hudWaveLine.textContent = gameRunning ? `Wave ${wave}` : "I menyn";
+    if (!gameRunning) {
+      hudWaveLine.textContent = "In menu";
+    } else if (isFreeplayMode()) {
+      const phase = getFreeplayPhaseDef();
+      const comboText = freeplayCombo >= 3 ? ` · x${freeplayCombo} combo` : "";
+      hudWaveLine.textContent = `Freeplay · ${phase.emoji} ${phase.label}${comboText} · ${formatHudNumber(runKills)} kills · ${formatHudNumber(freeplayRunSeconds)}s`;
+    } else {
+      hudWaveLine.textContent = `Wave ${wave}`;
+    }
   }
 
   if (score) score.innerText = player.score;
 
   const centerWave = document.getElementById("center-wave");
-  if (centerWave) centerWave.innerText = wave;
+  if (centerWave) centerWave.innerText = isFreeplayMode() ? "∞" : wave;
 
   const centerEventName = document.getElementById("center-event-name");
   const currentEventEl = document.getElementById("current-event");
   const bestWaveHud = document.getElementById("best-wave-hud");
   const event = getCurrentEvent();
-  if (centerEventName) centerEventName.innerText = event.name;
-  if (currentEventEl) currentEventEl.innerText = `${event.emoji} ${event.name}`;
+  if (centerEventName) {
+    centerEventName.innerText = isFreeplayMode()
+      ? `${getFreeplayPhaseDef().emoji} ${getFreeplayPhaseDef().label}`
+      : event.name;
+  }
+  if (currentEventEl) {
+    currentEventEl.innerText = isFreeplayMode()
+      ? `${getFreeplayPhaseDef().emoji} ${getFreeplayPhaseDef().label}`
+      : `${event.emoji} ${event.name}`;
+  }
   if (bestWaveHud) bestWaveHud.innerText = formatHudNumber(bestWave);
 
   const weaponHud = document.getElementById("weapon-hud");
@@ -5188,7 +5786,24 @@ function updateUI() {
 
 
 
-async function beginRun() {
+async function beginRun(mode = "campaign") {
+  gameMode = mode === "freeplay" ? "freeplay" : "campaign";
+  if (gameMode === "freeplay" && runtimeLiveConfig.freeplayEnabled === false) {
+    showMilestone("Freeplay is temporarily disabled.");
+    return;
+  }
+  lastGameMode = gameMode;
+  runKills = 0;
+  freeplaySpawnTick = 0;
+  freeplayRunSeconds = 0;
+  freeplayPhase = "steady";
+  freeplayPhaseTimer = 0;
+  freeplayPhaseDuration = 0;
+  freeplayArenaTint = null;
+  freeplayCombo = 0;
+  freeplayComboTimer = 0;
+  freeplayBestCombo = 0;
+  freeplayLastBossAt = -999;
 
   if (!c || !ctx) {
     console.error("Canvas or context is not available.");
@@ -5256,6 +5871,7 @@ async function beginRun() {
   paused = false;
   pauseReason = null;
   playerBaseSpeed = 4;
+  if (typeof resetProRunState === "function") resetProRunState();
   hideBonusOffer();
   closeShopMenu();
   closeShopUpgradeMenu();
@@ -5287,7 +5903,11 @@ async function beginRun() {
 
 
 
-  showMilestone(`Wave 1 — good luck!`);
+  showMilestone(
+    isFreeplayMode()
+      ? "Freeplay — calm, steady, surges & gold rush!"
+      : "Wave 1 — good luck!"
+  );
   saveProgress();
   refreshLeaderboard();
   startWave();
@@ -5308,7 +5928,7 @@ function restart() {
 
   gameOverOverlay.style.display = "none";
 
-  beginRun();
+  beginRun(lastGameMode);
 
 }
 
@@ -5317,9 +5937,11 @@ function restart() {
 function returnToMainMenu() {
   if (!gameRunning || isGameOverVisible()) return;
 
-  if (runBestWave > bestWave) {
+  if (isCampaignMode() && runBestWave > bestWave) {
     bestWave = runBestWave;
   }
+
+  gameMode = "campaign";
 
   gameRunning = false;
   paused = false;
@@ -5382,12 +6004,14 @@ function goToMainMenuFromGameOver() {
 }
 
 function gameOver() {
+  if (deathSequence?.active) return;
   gameRunning = false;
   paused = false;
   pauseReason = null;
   stopBackgroundMusic();
   hideCenterHud();
   hideBonusOffer();
+  closeRunModifierPick();
 
   if (zombieSpawner) {
     clearInterval(zombieSpawner);
@@ -5401,35 +6025,47 @@ function gameOver() {
 
   waveInProgress = false;
 
-  if (runBestWave > bestWave) {
+  if (isCampaignMode() && runBestWave > bestWave) {
     bestWave = runBestWave;
   }
 
+  saveProgress({ forceServer: true, quiet: true });
+  startDeathSequence();
+}
+
+function finalizeGameOver() {
   const goMsg = document.getElementById("gameover-msg");
   const progress = getXpProgress(player.totalXp);
   if (goMsg) {
-    goMsg.innerHTML = `
-      <p class="gameover-summary">Du nådde wave <strong>${formatHudNumber(runBestWave)}</strong> denna run.</p>
-      <div class="menu-stat-grid">
-        <div class="stat-card accent"><span class="stat-label">Bästa wave</span><strong class="stat-value">${formatHudNumber(bestWave)}</strong></div>
-        <div class="stat-card"><span class="stat-label">Level</span><strong class="stat-value">${formatHudNumber(progress.level)}</strong></div>
-        <div class="stat-card"><span class="stat-label">Kills totalt</span><strong class="stat-value">${formatHudNumber(player.kills)}</strong></div>
-        <div class="stat-card"><span class="stat-label">Skill Points</span><strong class="stat-value">${formatHudNumber(player.skillPoints)}</strong></div>
-      </div>
-    `;
+    if (isFreeplayMode()) {
+      goMsg.innerHTML = `
+        <p class="gameover-summary">Freeplay run: <strong>${formatHudNumber(runKills)}</strong> kills in <strong>${formatHudNumber(freeplayRunSeconds)}s</strong>.</p>
+        <div class="menu-stat-grid">
+          <div class="stat-card accent"><span class="stat-label">Run Kills</span><strong class="stat-value">${formatHudNumber(runKills)}</strong></div>
+          <div class="stat-card"><span class="stat-label">Best Combo</span><strong class="stat-value">x${formatHudNumber(freeplayBestCombo)}</strong></div>
+          <div class="stat-card"><span class="stat-label">Time</span><strong class="stat-value">${formatHudNumber(freeplayRunSeconds)}s</strong></div>
+          <div class="stat-card"><span class="stat-label">Mode</span><strong class="stat-value">Practice</strong></div>
+        </div>
+        <p class="gameover-summary" style="margin-top:10px;font-size:12px;opacity:0.75">No XP or skill points in Freeplay — use Waves Game to progress.</p>
+      `;
+    } else {
+      goMsg.innerHTML = `
+        <p class="gameover-summary">You reached wave <strong>${formatHudNumber(runBestWave)}</strong> this run.</p>
+        <div class="menu-stat-grid">
+          <div class="stat-card accent"><span class="stat-label">Best Wave</span><strong class="stat-value">${formatHudNumber(bestWave)}</strong></div>
+          <div class="stat-card"><span class="stat-label">Level</span><strong class="stat-value">${formatHudNumber(progress.level)}</strong></div>
+          <div class="stat-card"><span class="stat-label">Total Kills</span><strong class="stat-value">${formatHudNumber(player.kills)}</strong></div>
+          <div class="stat-card"><span class="stat-label">Skill Points</span><strong class="stat-value">${formatHudNumber(player.skillPoints)}</strong></div>
+        </div>
+      `;
+    }
   }
 
   updateUI();
 
-
-
   if (gameOverOverlay) {
-
     gameOverOverlay.style.display = "flex";
-
   }
-
-  saveProgress({ forceServer: true, quiet: true });
 
 }
 
@@ -5472,21 +6108,11 @@ function shoot(e) {
 
   if (!gameRunning || !c) return;
 
-  const rect = c.getBoundingClientRect();
+  const view = clientToView(e.clientX, e.clientY);
 
-  const screenX = e.clientX - rect.left;
+  if (view.x < 0 || view.y < 0 || view.x > VIEW_WIDTH || view.y > VIEW_HEIGHT) return;
 
-  const screenY = e.clientY - rect.top;
-
-
-
-  if (screenX < 0 || screenY < 0 || screenX > VIEW_WIDTH || screenY > VIEW_HEIGHT)
-
-    return;
-
-
-
-  const world = screenToWorld(screenX, screenY);
+  const world = screenToWorld(view.x, view.y);
   fireWeapon(world.x, world.y);
 }
 
@@ -5679,6 +6305,7 @@ function update() {
   updateMuzzleTracers();
   updateBulletAfterglows();
   updateHpPickups();
+  updateZombieProjectiles();
 
   if (bonusOffer) {
     updateBonusOfferUI();
@@ -5692,13 +6319,13 @@ function update() {
 
 
 
-  if (keys["w"]) player.y -= player.speed;
+  if (keys["w"]) player.y -= player.speed * getRunMoveSpeedMult();
 
-  if (keys["s"]) player.y += player.speed;
+  if (keys["s"]) player.y += player.speed * getRunMoveSpeedMult();
 
-  if (keys["a"]) player.x -= player.speed;
+  if (keys["a"]) player.x -= player.speed * getRunMoveSpeedMult();
 
-  if (keys["d"]) player.x += player.speed;
+  if (keys["d"]) player.x += player.speed * getRunMoveSpeedMult();
 
   updatePlayerFacing();
   updatePlayerAnimation();
@@ -5766,8 +6393,18 @@ function update() {
     const hitIndex = findBulletHitZombieIndex(b);
     if (hitIndex >= 0) {
       const z = zombies[hitIndex];
+      if (!b.hitZombies) b.hitZombies = new Set();
+      if (b.hitZombies.has(z)) {
+        bullets.splice(i, 1);
+        continue;
+      }
+      b.hitZombies.add(z);
       damageZombie(z, hitIndex, { angle: b.angle ?? Math.atan2(b.dy, b.dx) }, b.damage);
-      bullets.splice(i, 1);
+      if ((b.pierceLeft ?? 0) <= 0) {
+        bullets.splice(i, 1);
+      } else {
+        b.pierceLeft -= 1;
+      }
     }
   }
 
@@ -5788,9 +6425,20 @@ function update() {
     const dist = Math.sqrt(dx * dx + dy * dy);
     const speed = z.speed || 1.2;
 
+    let movedByArchetype = false;
     if (dist > 0) {
-      z.x += (dx / dist) * speed * (z.jitter || 1);
-      z.y += (dy / dist) * speed * (z.jitter || 1);
+      movedByArchetype = updateZombieArchetype(
+        z,
+        dist,
+        playerCenterX,
+        playerCenterY,
+        zombieCenterX,
+        zombieCenterY
+      );
+      if (!movedByArchetype) {
+        z.x += (dx / dist) * speed * (z.jitter || 1);
+        z.y += (dy / dist) * speed * (z.jitter || 1);
+      }
       z.facingAngle = Math.atan2(dy, dx);
       z.animTick = (z.animTick || 0) + 1;
       if (z.animTick % 6 === 0) {
@@ -5806,7 +6454,9 @@ function update() {
   const contactCount = countZombiesTouchingPlayer();
   applyZombieSwarmDamage(contactCount);
 
-  if (zombies.length === 0 && waveInProgress && !nextWaveTimer) {
+  updateFreeplayMode();
+
+  if (isCampaignMode() && zombies.length === 0 && waveInProgress && !nextWaveTimer) {
     scheduleNextWave();
   }
 
@@ -5931,6 +6581,11 @@ function drawWorldBackground(theme) {
     ctx.fillStyle = event.tint;
     ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
   }
+
+  if (isFreeplayMode() && freeplayArenaTint) {
+    ctx.fillStyle = freeplayArenaTint;
+    ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+  }
 }
 
 
@@ -5957,7 +6612,8 @@ function draw() {
 
   ctx.save();
 
-  ctx.translate(-camera.x, -camera.y);
+  const shake = typeof getShakeOffset === "function" ? getShakeOffset() : { x: 0, y: 0 };
+  ctx.translate(-camera.x + shake.x, -camera.y + shake.y);
 
 
 
@@ -5970,12 +6626,26 @@ function draw() {
   drawPlayer(theme);
 
   drawFloatingTexts();
+  drawZombieProjectiles();
 
   zombies.forEach((z) => {
     const cx = z.x + z.size / 2;
     const cy = z.y + z.size / 2;
     const isWaveBoss = z.tier === "waveBoss" || z.isWaveBoss;
+    const archetypeDef = z.archetype ? ARCHETYPE_DEFS[z.archetype] : null;
     const sheet = (z.animTick || 0) > 0 ? zombieSprites.move : zombieSprites.idle;
+
+    drawArchetypeTint(z, cx, cy);
+    drawArchetypeTelegraph(z, cx, cy);
+    if (z.golden) {
+      ctx.save();
+      ctx.globalAlpha = 0.24;
+      ctx.fillStyle = "#ffd54a";
+      ctx.beginPath();
+      ctx.arc(cx, cy, z.size * 0.46, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
 
     if (
       !drawSpriteWithGlow(
@@ -5985,8 +6655,14 @@ function draw() {
         cy,
         z.size,
         z.facingAngle || 0,
-        isWaveBoss ? "#d050ff" : theme.zombieGlow,
-        isWaveBoss ? { blur: 26, alpha: 0.52 } : undefined
+        isWaveBoss ? "#d050ff" : z.golden ? "#ffd54a" : archetypeDef?.glow || theme.zombieGlow,
+        isWaveBoss
+          ? { blur: 26, alpha: 0.52 }
+          : z.golden
+            ? { blur: 18, alpha: 0.45 }
+            : archetypeDef
+              ? { blur: 16, alpha: 0.38 }
+              : undefined
       )
     ) {
       drawEntityShadow(cx, cy, z.size);
@@ -6017,7 +6693,11 @@ function draw() {
       height: isWaveBoss ? 6 : 4,
       color: barColor,
       showText: true,
-      label: isWaveBoss ? `BOSS ${Math.max(0, Math.ceil(z.hp))}` : `${Math.max(0, Math.ceil(z.hp))}`,
+      label: isWaveBoss
+        ? `BOSS P${z.bossPhase || 1} ${Math.max(0, Math.ceil(z.hp))}`
+        : z.archetype
+          ? `${ARCHETYPE_DEFS[z.archetype]?.label || ""} ${Math.max(0, Math.ceil(z.hp))}`
+          : `${Math.max(0, Math.ceil(z.hp))}`,
       fontSize: isWaveBoss ? 10 : isElite ? 9 : 8
     });
   });
@@ -6035,7 +6715,11 @@ function draw() {
 
   ctx.restore();
 
-  drawViewportVignette();
+  if (typeof drawEnhancedVignette === "function") {
+    drawEnhancedVignette();
+  } else {
+    drawViewportVignette();
+  }
 
 }
 
@@ -6078,7 +6762,7 @@ function toggleGamePause() {
   const willPause = !paused;
   if (!setGamePaused(willPause, willPause ? "manual" : null)) return false;
 
-  showMilestone(willPause ? "⏸ Spelet pausat" : "▶ Fortsätter");
+  showMilestone(willPause ? "⏸ Game paused" : "▶ Resuming");
   return true;
 }
 
@@ -6109,15 +6793,19 @@ window.closeShopUpgradeMenu = closeShopUpgradeMenu;
 window.confirmShopUpgrade = confirmShopUpgrade;
 window.setShopUpgradeAmount = setShopUpgradeAmount;
 window.buyUpgrade = buyUpgrade;
+window.refreshAuthTokenFromStorage = refreshAuthTokenFromStorage;
+window.showAuthScreen = showAuthScreen;
 
 
 
 function loop() {
-  if (gameRunning && !paused) {
+  if (typeof tickProFrame === "function") tickProFrame();
+
+  if (gameRunning && !paused && !(typeof shouldSkipGameplayUpdate === "function" && shouldSkipGameplayUpdate())) {
     update();
   }
 
-  if (gameRunning || isStartMenuVisible() || isGameOverVisible()) {
+  if (gameRunning || deathSequence?.active || isStartMenuVisible() || isGameOverVisible()) {
     draw();
   }
 
@@ -6133,9 +6821,8 @@ if (c) {
   c.addEventListener("mousedown", (e) => {
     resumeAudio();
 
-    const rect = c.getBoundingClientRect();
-
-    const world = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+    const view = clientToView(e.clientX, e.clientY);
+    const world = screenToWorld(view.x, view.y);
 
     mouseTarget.x = world.x;
 
@@ -6155,9 +6842,8 @@ if (c) {
 
   c.addEventListener("mousemove", (e) => {
 
-    const rect = c.getBoundingClientRect();
-
-    const world = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+    const view = clientToView(e.clientX, e.clientY);
+    const world = screenToWorld(view.x, view.y);
 
     mouseTarget.x = world.x;
 
@@ -6229,6 +6915,9 @@ window.openWeaponUpgradeMenu = openWeaponUpgradeMenu;
 window.startGame = beginRun;
 window.restart = restart;
 window.tryBonusOffer = tryBonusOffer;
+window.applyRuntimeConfigFromCommunity = applyRuntimeConfigFromCommunity;
+window.refreshCommunityPanel = refreshCommunityPanel;
+window.scheduleLeaderboardRefresh = scheduleLeaderboardRefresh;
 
 
 
@@ -6308,6 +6997,11 @@ async function init() {
     feedbackInboxModal.addEventListener("click", (event) => {
       if (event.target === feedbackInboxModal) closeFeedbackInboxMenu();
     });
+  }
+
+  const adminModal = document.getElementById("admin-modal");
+  if (adminModal && !adminModal.dataset.backdropBound) {
+    adminModal.dataset.backdropBound = "1";
   }
 
   const musicSlider = document.getElementById("settings-music-volume");
