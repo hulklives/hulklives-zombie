@@ -2218,9 +2218,16 @@ display:none;
 flex-direction:column;
 align-items:stretch;
 justify-content:stretch;
-background:#020a06;
+background:
+radial-gradient(ellipse 120% 90% at 50% 20%, rgba(61,255,168,0.12), transparent 55%),
+linear-gradient(180deg, #0c2e1a 0%, #0a2214 48%, #06180e 100%);
 z-index:var(--z-start-menu);
 overflow:hidden;
+}
+
+body.lobby-open{
+overflow:hidden;
+background:#0a2214;
 }
 
 body.lobby-open #app-center{
@@ -2237,8 +2244,8 @@ pointer-events:auto;
 flex:1 1 auto;
 width:100%;
 max-width:none;
-min-height:100%;
 height:100%;
+max-height:100dvh;
 margin:0;
 border-radius:0;
 border:none;
@@ -2249,30 +2256,28 @@ background:transparent;
 display:flex;
 flex-direction:column;
 align-items:stretch;
-justify-content:flex-start;
-overflow-y:auto;
+justify-content:center;
+overflow:hidden;
 box-sizing:border-box;
 }
 
 .start-menu-inner{
 position:relative;
 z-index:2;
-flex:1 1 auto;
+flex:0 1 auto;
 width:100%;
-min-height:100%;
-min-height:100dvh;
+max-height:100dvh;
 max-width:none;
-padding:clamp(20px, 3vh, 36px) clamp(20px, 5vw, 64px) clamp(24px, 4vh, 40px);
+padding:clamp(12px, 2vh, 28px) clamp(16px, 4vw, 48px);
 box-sizing:border-box;
 display:flex;
 flex-direction:column;
-background:
-linear-gradient(165deg, #0a2214 0%, #06120c 55%, #041008 100%);
+justify-content:center;
+overflow:hidden;
+background:transparent;
 border:none;
 border-radius:0;
-box-shadow:
-inset 0 0 0 1px rgba(61,255,168,0.22),
-inset 0 0 100px rgba(61,255,168,0.08);
+box-shadow:none;
 }
 
 .start-menu-inner::before{
@@ -2298,12 +2303,31 @@ pointer-events:none;
 }
 
 .start-menu-content{
-width:min(920px, 100%);
+width:min(880px, 100%);
 margin:0 auto;
-flex:1 1 auto;
+}
+
+.start-menu-topbar{
 display:flex;
-flex-direction:column;
-min-height:0;
+justify-content:flex-end;
+margin-bottom:6px;
+}
+
+.start-menu-logout-link{
+border:1px solid rgba(255,120,120,0.24);
+background:rgba(255,80,80,0.08);
+color:#ffc9c9;
+font:inherit;
+font-size:12px;
+font-weight:700;
+cursor:pointer;
+padding:6px 12px;
+border-radius:999px;
+width:auto;
+}
+
+.start-menu-logout-link:hover{
+background:rgba(255,80,80,0.14);
 }
 
 .start-menu-inner > *,
@@ -2398,8 +2422,8 @@ filter:drop-shadow(0 0 6px rgba(61,255,168,0.55));
 }
 
 .start-menu-panel .panel-header{
-margin-bottom:16px;
-padding-bottom:14px;
+margin-bottom:12px;
+padding-bottom:10px;
 border-bottom:1px solid rgba(61,255,168,0.12);
 text-align:center;
 }
@@ -2491,7 +2515,7 @@ grid-column:1 / -1;
 }
 
 .start-menu-secondary.menu-action-grid{
-grid-template-columns:repeat(3, minmax(0, 1fr));
+grid-template-columns:repeat(4, minmax(0, 1fr));
 }
 
 .start-menu-mode-grid{
@@ -2500,11 +2524,11 @@ gap:14px;
 }
 
 .start-menu-mode-copy{
-margin:0 0 12px;
-padding:8px 10px;
+margin:0 0 10px;
+padding:6px 10px;
 border-radius:10px;
-font-size:11px;
-line-height:1.45;
+font-size:10px;
+line-height:1.4;
 color:#b8f5d4;
 background:rgba(61,255,168,0.06);
 border:1px solid rgba(61,255,168,0.12);
@@ -2531,96 +2555,69 @@ font-size:18px;
 .start-menu-secondary .side-action-btn{
 border-color:rgba(255,255,255,0.07);
 background:rgba(255,255,255,0.035);
-}
-
-.start-menu-footer{
-display:flex;
-align-items:center;
-justify-content:space-between;
-gap:14px;
-margin-top:auto;
-padding:14px 16px;
-border-radius:12px;
-background:rgba(0,0,0,0.22);
-border:1px solid rgba(255,255,255,0.06);
-}
-
-.start-menu-hint{
-display:flex;
-align-items:center;
-gap:6px;
-margin:0;
-font-size:12px;
-line-height:1.45;
-color:var(--text-muted);
-text-align:left;
-flex:1 1 auto;
-min-width:0;
-}
-
-.start-menu-hint::before{
-content:"💚";
-font-size:14px;
-opacity:0.85;
-flex:0 0 auto;
-}
-
-#start-menu .start-menu-logout{
-margin:0;
-max-width:none;
-padding:10px 18px;
-flex:0 0 auto;
-white-space:nowrap;
-}
-
-@media (max-width:760px){
-.start-menu-footer{
-flex-direction:column;
-align-items:stretch;
-}
-
-.start-menu-hint{
-text-align:center;
-justify-content:center;
-}
-
-#start-menu .start-menu-logout{
-width:100%;
-}
-}
-
-@media (max-height:820px){
-.start-menu-inner{
-padding-top:16px;
-padding-bottom:18px;
-}
-
-.start-menu-hero-badge,
-.start-menu-hearts{
-display:none;
-}
-
-.start-menu-mode-copy{
-margin-bottom:8px;
-padding:6px 8px;
-font-size:10px;
-}
-
-#start-menu-stats .stat-card{
-padding:8px 10px;
-}
-
-.start-menu-mode-grid{
-gap:10px;
+padding:9px 8px;
 }
 
 .start-menu-secondary.menu-action-grid{
-margin-top:8px;
+grid-template-columns:repeat(4, minmax(0, 1fr));
+gap:6px;
+margin-top:10px;
+}
+
+.start-menu-secondary .side-action-text{
+font-size:11px;
+}
+
+@media (max-height:760px){
+.start-menu-inner{
+padding:10px 14px;
+}
+
+.start-menu-hero-badge,
+.start-menu-hearts,
+.start-menu-mode-copy{
+display:none;
+}
+
+.start-menu-panel .panel-header{
+margin-bottom:8px;
+padding-bottom:8px;
+}
+
+.start-menu-panel .panel-title{
+font-size:clamp(22px, 4vw, 28px);
+}
+
+.start-menu-greeting{
+margin-top:6px;
+font-size:12px;
+}
+
+#start-menu-stats .stat-card{
+padding:7px 9px;
+gap:8px;
+}
+
+#start-menu-stats .stat-icon{
+width:28px;
+height:28px;
+font-size:14px;
+}
+
+.start-menu-mode-grid{
+gap:8px;
+}
+
+.start-menu-secondary .side-action-btn{
+padding:7px 6px;
 }
 }
 
-#start-menu .start-menu-logout:hover{
-background:rgba(255,80,80,0.1);
+@media (max-height:680px){
+.start-menu-content{
+transform:scale(0.94);
+transform-origin:center center;
+}
 }
 
 #nick button{
@@ -4721,6 +4718,9 @@ TikTok @hulklives
 <div class="start-menu-panel overlay-card">
 <div class="start-menu-inner">
 <div class="start-menu-content">
+<div class="start-menu-topbar">
+<button type="button" class="start-menu-logout-link" onclick="logoutAccount()">Log out</button>
+</div>
 <div id="start-menu-announcement" class="start-menu-announcement" hidden aria-live="polite">
 <span class="start-menu-announcement-icon">📣</span>
 <span id="start-menu-announcement-text"></span>
@@ -4747,10 +4747,6 @@ TikTok @hulklives
 <button type="button" class="side-action-btn" onclick="openFeedbackMenu()"><span class="side-action-icon">💬</span><span class="side-action-text">Report</span></button>
 <button type="button" class="side-action-btn" onclick="openTutorial(true)"><span class="side-action-icon">📖</span><span class="side-action-text">Tutorial</span></button>
 <button type="button" class="side-action-btn gold game-admin-only" id="start-menu-admin-btn" hidden onclick="openAdminPanel()"><span class="side-action-icon">🛡</span><span class="side-action-text">Admin</span><span class="side-action-badge" id="admin-open-reports-count-menu">0</span></button>
-</div>
-<div class="start-menu-footer">
-<p class="menu-hint start-menu-hint">Buy upgrades in the shop before you start — or jump straight into the zombies.</p>
-<button type="button" class="menu-secondary-btn danger start-menu-logout" onclick="logoutAccount()">Log out</button>
 </div>
 </div>
 </div>
@@ -5076,7 +5072,7 @@ TikTok @hulklives
 </div>
 
 <script src="game-pro.js?v=3"></script>
-<script src="game.js?v=195"></script>
+<script src="game.js?v=196"></script>
 <script src="chat.js?v=2"></script>
 <script src="friends.js?v=4"></script>
 <script src="coop-lobby.js?v=2"></script>
