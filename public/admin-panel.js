@@ -898,6 +898,7 @@ async function openAdminPanel(tab = "announcement") {
   if (!modal) return;
 
   bindAdminPanelEvents();
+  if (typeof hideStartMenu === "function") hideStartMenu();
   document.body.classList.add("admin-open");
   adminPanelOpen = true;
   if (typeof pauseForRunModal === "function") pauseForRunModal("admin");
@@ -926,13 +927,13 @@ function closeAdminPanel() {
   document.body.classList.remove("admin-open");
   setAdminStatus("");
 
-  if (wasOpen && typeof showStartMenu === "function") {
-    showStartMenu();
-  } else if (typeof repairUiState === "function") {
-    repairUiState();
+  if (wasOpen && typeof resumeFromRunModal === "function") {
+    resumeFromRunModal("admin");
   }
 
-  if (wasOpen && typeof resumeFromRunModal === "function") resumeFromRunModal("admin");
+  if (typeof repairUiState === "function") {
+    repairUiState();
+  }
 }
 
 window.openAdminPanel = openAdminPanel;

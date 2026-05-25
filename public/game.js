@@ -2110,6 +2110,58 @@ function clearAuthToken() {
   saveAuthToken("");
 }
 
+function handleSessionExpired(message = "Session expired. Log in again.") {
+  clearAuthToken();
+  playerName = "";
+  canViewFeedbackInbox = false;
+  isGameAdmin = false;
+  updateGameAdminUI(0);
+  gameRunning = false;
+  paused = false;
+  pauseReason = null;
+  hideStartMenu();
+  hideTutorialOverlay();
+  hideCenterHud();
+  hideBonusOffer();
+  closeShopMenu();
+  closeShopUpgradeMenu();
+  closeSettingsMenu();
+  closeAchievementsMenu();
+  closeFeedbackMenu();
+  closeFeedbackInboxMenu();
+  closeRunModifierPick();
+
+  const adminModal = document.getElementById("admin-modal");
+  if (adminModal?.classList.contains("open")) {
+    adminModal.classList.remove("open");
+    adminModal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("admin-open");
+  }
+
+  if (zombieSpawner) {
+    clearInterval(zombieSpawner);
+    zombieSpawner = null;
+  }
+
+  if (nextWaveTimer) {
+    clearTimeout(nextWaveTimer);
+    nextWaveTimer = null;
+  }
+
+  waveInProgress = false;
+  isMouseDown = false;
+  stopBackgroundMusic();
+
+  if (gameOverOverlay) gameOverOverlay.style.display = "none";
+
+  showAuthScreen("login");
+  setAuthError(message);
+  updateUI();
+
+  if (typeof refreshGlobalChat === "function") refreshGlobalChat();
+  if (typeof refreshOnlinePlayers === "function") refreshOnlinePlayers(true);
+}
+
 function refreshAuthTokenFromStorage() {
   authToken = loadAuthToken();
   return authToken;
@@ -4502,7 +4554,8 @@ async function loadSave() {
       if (response.ok) {
         serverData = await response.json();
       } else if (response.status === 401) {
-        clearAuthToken();
+        handleSessionExpired();
+        return;
       }
     } catch (error) {
       console.warn("Failed to load server save", error);
@@ -4677,9 +4730,7 @@ function syncSaveToServer({ quiet = true } = {}) {
   })
     .then(async (response) => {
       if (response.status === 401) {
-        clearAuthToken();
-        showMilestone("Session expired — log in again");
-        showAuthScreen("login");
+        handleSessionExpired();
         return false;
       }
       if (response.status === 403 || response.status === 429) {
@@ -7279,6 +7330,8 @@ window.setShopUpgradeAmount = setShopUpgradeAmount;
 window.buyUpgrade = buyUpgrade;
 window.refreshAuthTokenFromStorage = refreshAuthTokenFromStorage;
 window.showAuthScreen = showAuthScreen;
+window.repairUiState = repairUiState;
+window.hideStartMenu = hideStartMenu;
 
 
 
@@ -7569,6 +7622,13 @@ async function init() {
     if (feedbackInboxModalEl?.classList.contains("open")) {
       event.preventDefault();
       closeFeedbackInboxMenu();
+      return;
+    }
+
+    const adminModalEl = document.getElementById("admin-modal");
+    if (adminModalEl?.classList.contains("open")) {
+      event.preventDefault();
+      if (typeof closeAdminPanel === "function") closeAdminPanel();
       return;
     }
 
