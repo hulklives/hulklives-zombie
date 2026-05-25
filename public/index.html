@@ -885,10 +885,139 @@ font-size:9px;
 padding:2px 6px;
 }
 
+#online-players-panel{
+flex:0 0 auto;
+max-height:180px;
+display:flex;
+flex-direction:column;
+overflow:hidden;
+background:rgba(2,12,6,0.42);
+border:1px solid var(--panel-border);
+box-shadow:0 4px 18px rgba(0,0,0,0.18);
+backdrop-filter:blur(6px);
+-webkit-backdrop-filter:blur(6px);
+padding:9px 10px 10px;
+border-radius:12px;
+color:var(--text-soft);
+}
+
+#online-players-panel .panel-header{
+margin-bottom:6px;
+padding-bottom:5px;
+border-bottom:1px solid rgba(255,255,255,0.06);
+}
+
+#online-players-panel .panel-eyebrow{
+font-size:9px;
+margin-bottom:2px;
+}
+
+#online-players-panel .panel-title{
+margin:0;
+font-size:12px;
+font-weight:700;
+letter-spacing:0.08em;
+text-transform:uppercase;
+color:rgba(255,255,255,0.82);
+}
+
+#online-players-count{
+display:inline-flex;
+align-items:center;
+justify-content:center;
+min-width:18px;
+height:18px;
+margin-left:6px;
+padding:0 5px;
+border-radius:999px;
+background:rgba(93,255,176,0.16);
+border:1px solid rgba(93,255,176,0.28);
+font-size:10px;
+color:#d8ffe8;
+vertical-align:middle;
+}
+
+.online-players-list{
+flex:1 1 auto;
+min-height:72px;
+max-height:120px;
+overflow-y:auto;
+display:flex;
+flex-direction:column;
+gap:6px;
+padding-right:2px;
+}
+
+.online-players-empty{
+font-size:11px;
+line-height:1.45;
+color:var(--text-muted);
+padding:6px 2px;
+}
+
+.online-player-row{
+display:flex;
+align-items:flex-start;
+gap:8px;
+padding:6px 7px;
+border-radius:10px;
+background:rgba(255,255,255,0.03);
+border:1px solid rgba(255,255,255,0.05);
+}
+
+.online-player-row.in-game{
+border-color:rgba(93,255,176,0.18);
+background:rgba(93,255,176,0.05);
+}
+
+.online-player-dot{
+flex:0 0 auto;
+width:8px;
+height:8px;
+margin-top:4px;
+border-radius:50%;
+background:#7d8a84;
+box-shadow:0 0 0 2px rgba(255,255,255,0.04);
+}
+
+.online-player-row.in-game .online-player-dot{
+background:#5dffb0;
+box-shadow:0 0 8px rgba(93,255,176,0.45);
+}
+
+.online-player-copy{
+min-width:0;
+display:flex;
+flex-direction:column;
+gap:2px;
+}
+
+.online-player-name{
+font-size:11px;
+color:#d8ffe8;
+}
+
+.online-player-role{
+font-size:9px;
+font-weight:800;
+letter-spacing:0.08em;
+text-transform:uppercase;
+color:#ffd88a;
+}
+
+.online-player-status{
+font-size:10px;
+color:var(--text-muted);
+}
+
+#online-players-panel.logged-out .online-players-list{
+opacity:0.72;
+}
+
 #global-chat{
 flex:1 1 auto;
-min-height:190px;
-max-height:280px;
+min-height:170px;
+max-height:240px;
 display:flex;
 flex-direction:column;
 overflow:hidden;
@@ -4027,6 +4156,16 @@ TikTok @hulklives
 </div>
 </div>
 
+<div id="online-players-panel" class="side-panel online-players-panel logged-out">
+<div class="panel-header">
+<p class="panel-eyebrow">Players</p>
+<h2 class="panel-title">Online now <span id="online-players-count">0</span></h2>
+</div>
+<div id="online-players-list" class="online-players-list" aria-live="polite">
+<div class="online-players-empty">Log in to see who is online.</div>
+</div>
+</div>
+
 <div id="global-chat" class="side-panel global-chat-panel logged-out">
 <div class="panel-header">
 <p class="panel-eyebrow">Community</p>
@@ -4387,6 +4526,7 @@ TikTok @hulklives
 <script src="game-pro.js?v=3"></script>
 <script src="game.js?v=174"></script>
 <script src="chat.js?v=1"></script>
+<script src="online.js?v=1"></script>
 <script src="admin-panel.js?v=11"></script>
 
 </body>

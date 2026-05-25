@@ -2183,6 +2183,7 @@ async function completeLogin(username, token) {
   updateMonthlyAchievementHUD();
   refreshLeaderboard();
   if (typeof refreshGlobalChat === "function") refreshGlobalChat();
+  if (typeof refreshOnlinePlayers === "function") refreshOnlinePlayers(true);
   enterMainMenuFlow();
 }
 
@@ -2313,6 +2314,7 @@ async function logoutAccount() {
   setAuthError("");
   updateUI();
   if (typeof refreshGlobalChat === "function") refreshGlobalChat();
+  if (typeof refreshOnlinePlayers === "function") refreshOnlinePlayers(true);
 }
 
 function savePlayerName() {
@@ -5380,14 +5382,15 @@ function startWave() {
   if (isFreeplayMode()) {
     startFreeplayMode();
     updateUI();
-    return;
+  } else {
+    syncWaveEvent(true);
+    waveInProgress = true;
+    checkWaveMilestonesOnStart();
+    spawnWave();
+    updateUI();
+    showCenterHudBriefly();
   }
-  syncWaveEvent(true);
-  waveInProgress = true;
-  checkWaveMilestonesOnStart();
-  spawnWave();
-  updateUI();
-  showCenterHudBriefly();
+  if (typeof reportOnlinePresence === "function") reportOnlinePresence();
 }
 
 
@@ -6045,6 +6048,7 @@ async function beginRun(mode = "campaign") {
 
   }
 
+  if (typeof reportOnlinePresence === "function") reportOnlinePresence();
 }
 
 
@@ -6113,6 +6117,7 @@ function returnToMainMenu() {
   saveProgress({ forceServer: true, quiet: true });
   updateUI();
   showStartMenu();
+  if (typeof reportOnlinePresence === "function") reportOnlinePresence();
 }
 
 
@@ -7347,6 +7352,15 @@ window.addEventListener("beforeunload", () => {
 
 
 
+function getOnlinePresenceState() {
+  return {
+    inGame: Boolean(gameRunning),
+    status: !gameRunning ? "menu" : isFreeplayMode() ? "freeplay" : "playing",
+    wave: isFreeplayMode() ? 0 : Number(wave) || 0
+  };
+}
+
+window.getOnlinePresenceState = getOnlinePresenceState;
 window.submitNickname = submitNickname;
 window.submitAuth = submitAuth;
 window.setAuthMode = setAuthMode;
@@ -7541,6 +7555,7 @@ async function init() {
     updateMonthlyAchievementHUD();
     refreshLeaderboard();
     if (typeof refreshGlobalChat === "function") refreshGlobalChat();
+    if (typeof refreshOnlinePlayers === "function") refreshOnlinePlayers(true);
     enterMainMenuFlow();
   } else {
     hideCenterHud();

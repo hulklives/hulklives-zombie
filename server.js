@@ -44,6 +44,11 @@ const {
   loadChatStore
 } = require("./chat");
 const {
+  listOnlinePlayers,
+  removePresence,
+  touchPresence
+} = require("./presence");
+const {
   deleteSession,
   deleteSessionsForUsernameKey,
   findSaveKeyForAccount,
@@ -340,6 +345,7 @@ function requireAuthAndAccess(req, res, next) {
 }
 
 app.post("/api/logout", requireAuth, (req, res) => {
+  removePresence(req.auth.displayName);
   deleteSession(req.authToken);
   res.json({ ok: true });
 });
@@ -844,6 +850,27 @@ app.post("/api/chat", requireAuthAndAccess, (req, res) => {
   }
 
   res.json({ ok: true, message: result.message, latestId: getLatestChatId() });
+});
+
+app.get("/api/presence/online", requireAuthAndAccess, (req, res) => {
+  res.json({
+    ok: true,
+    players: listOnlinePlayers()
+  });
+});
+
+app.post("/api/presence", requireAuthAndAccess, (req, res) => {
+  const entry = touchPresence(req.auth.displayName, {
+    status: req.body?.status,
+    inGame: req.body?.inGame,
+    wave: req.body?.wave
+  });
+
+  res.json({
+    ok: true,
+    player: entry,
+    players: listOnlinePlayers()
+  });
 });
 
 app.post("/save", requireAuthAndAccess, (req, res) => {
