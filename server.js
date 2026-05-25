@@ -50,9 +50,19 @@ const {
 } = require("./presence");
 const { attachCoopLobbyWebSocket } = require("./coop-lobby");
 const {
+  acceptFriendRequest,
+  cancelFriendRequest,
+  declineFriendRequest,
+  getFriendsSnapshot,
+  loadFriendsStore,
+  removeFriend,
+  sendFriendRequest
+} = require("./friends");
+const {
   deleteSession,
   deleteSessionsForUsernameKey,
   findSaveKeyForAccount,
+  getAccountByUsername,
   listAccountSummaries,
   loadAuthStore,
   loginAccount,
@@ -418,6 +428,59 @@ app.get("/save", requireAuthAndAccess, (req, res) => {
 
 app.get("/leaderboard", (req, res) => {
   res.json(buildLeaderboard(req.query.limit));
+});
+
+app.get("/api/friends", requireAuthAndAccess, (req, res) => {
+  res.json({
+    ok: true,
+    ...getFriendsSnapshot(req.auth.displayName)
+  });
+});
+
+app.post("/api/friends/request", requireAuthAndAccess, (req, res) => {
+  const targetUsername = req.body?.username;
+  const result = sendFriendRequest(req.auth.displayName, targetUsername, getAccountByUsername);
+  if (!result.ok) {
+    return res.status(400).json({ error: result.error });
+  }
+  res.json({
+    ok: true,
+    message: result.message,
+    autoAccepted: Boolean(result.autoAccepted),
+    ...getFriendsSnapshot(req.auth.displayName)
+  });
+});
+
+app.post("/api/friends/accept", requireAuthAndAccess, (req, res) => {
+  const result = acceptFriendRequest(req.auth.displayName, req.body?.username, getAccountByUsername);
+  if (!result.ok) {
+    return res.status(400).json({ error: result.error });
+  }
+  res.json({ ok: true, message: result.message, ...getFriendsSnapshot(req.auth.displayName) });
+});
+
+app.post("/api/friends/decline", requireAuthAndAccess, (req, res) => {
+  const result = declineFriendRequest(req.auth.displayName, req.body?.username, getAccountByUsername);
+  if (!result.ok) {
+    return res.status(400).json({ error: result.error });
+  }
+  res.json({ ok: true, message: result.message, ...getFriendsSnapshot(req.auth.displayName) });
+});
+
+app.post("/api/friends/cancel", requireAuthAndAccess, (req, res) => {
+  const result = cancelFriendRequest(req.auth.displayName, req.body?.username, getAccountByUsername);
+  if (!result.ok) {
+    return res.status(400).json({ error: result.error });
+  }
+  res.json({ ok: true, message: result.message, ...getFriendsSnapshot(req.auth.displayName) });
+});
+
+app.post("/api/friends/remove", requireAuthAndAccess, (req, res) => {
+  const result = removeFriend(req.auth.displayName, req.body?.username, getAccountByUsername);
+  if (!result.ok) {
+    return res.status(400).json({ error: result.error });
+  }
+  res.json({ ok: true, message: result.message, ...getFriendsSnapshot(req.auth.displayName) });
 });
 
 function sanitizeTikTokUrl(value) {
@@ -975,6 +1038,7 @@ async function startServer() {
   await applyStartupSkillPointGrants();
   await loadFeedbackStore();
   await loadChatStore();
+  await loadFriendsStore();
   ensureAdminConfigFile();
 
   attachCoopLobbyWebSocket(server, {
@@ -985,7 +1049,7 @@ async function startServer() {
   server.listen(port, () => {
     console.log(`OK server running on http://localhost:${port}`);
     console.log(`Persistent storage: ${storage.getStorageMode()}`);
-    console.log("Accounts, save validation, anti-cheat, admin tools, live chat and co-op lobby enabled");
+    console.log("Accounts, save validation, anti-cheat, admin tools, live chat, friends and co-op lobby enabled");
   });
 }
 

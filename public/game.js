@@ -2458,6 +2458,7 @@ function restoreStartMenuAfterModal() {
 
 function syncAuthSidePanels() {
   if (typeof refreshGlobalChat === "function") refreshGlobalChat(true);
+  if (typeof refreshFriendsPanel === "function") refreshFriendsPanel(true);
 }
 
 function repairUiState() {

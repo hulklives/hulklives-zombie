@@ -190,6 +190,13 @@ function findSaveKeyForAccount(saves, displayName) {
   return bestKey;
 }
 
+function getAccountByUsername(username) {
+  const key = usernameKey(normalizeNickname(username));
+  const account = accounts[key];
+  if (!account) return null;
+  return { usernameKey: key, displayName: account.displayName };
+}
+
 function requireAuth(req, res, next) {
   const header = String(req.headers.authorization || "");
   const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
@@ -210,6 +217,7 @@ module.exports = {
   deleteSession,
   deleteSessionsForUsernameKey,
   findSaveKeyForAccount,
+  getAccountByUsername,
   listAccountSummaries,
   loadAuthStore,
   loginAccount,
