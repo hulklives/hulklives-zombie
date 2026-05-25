@@ -1268,7 +1268,7 @@ let bullets = [];
 
 let playerBombs = [];
 let explosionEffects = [];
-let bombCharges = 2;
+let bombCharges = 3;
 let bombReadyAt = 0;
 
 let muzzleTracers = [];
@@ -1303,7 +1303,7 @@ const NEXT_WAVE_DELAY_MS = 2500;
 
 const SHOOT_COOLDOWN = 12;
 const BOMB_COOLDOWN_MS = 30000;
-const BOMB_MAX_CHARGES = 2;
+const BOMB_MAX_CHARGES = 3;
 const BOMB_THROW_SPEED = 8.5;
 const BOMB_BLAST_RADIUS = 148;
 const BOMB_DAMAGE_MULT = 5;
@@ -2399,8 +2399,8 @@ const TUTORIAL_STEPS = [
   {
     icon: "🎯",
     title: "Aim & shoot",
-    body: "The mouse aims automatically. Hold left click or click to shoot zombies. Press R twice for two bombs, then wait 30 seconds.",
-    keys: ["🖱️ Aim", "🔫 Shoot", "R Bomb x2"]
+    body: "The mouse aims automatically. Hold left click or click to shoot zombies. Press R for up to 3 bombs, then wait 30 seconds.",
+    keys: ["🖱️ Aim", "🔫 Shoot", "R Bomb x3"]
   },
   {
     icon: "🌊",
@@ -5809,18 +5809,39 @@ function updateUI() {
 
   const bombAttackHud = document.getElementById("bomb-attack-hud");
   const bombAttackStatus = document.getElementById("bomb-attack-status");
+  const bombAttackTimer = document.getElementById("bomb-attack-timer");
   if (bombAttackHud) {
     bombAttackHud.hidden = !gameRunning || isGameOverVisible();
   }
+  syncBombCharges();
+  const cooldownMs = getBombCooldownRemainingMs();
+  const onCooldown = bombCharges <= 0 && cooldownMs > 0;
+
   if (bombAttackStatus) {
-    syncBombCharges();
     if (!gameRunning || isGameOverVisible()) {
       bombAttackStatus.textContent = `x${BOMB_MAX_CHARGES}`;
     } else if (bombCharges > 0) {
       bombAttackStatus.textContent = `x${bombCharges}`;
     } else {
-      bombAttackStatus.textContent = `${Math.ceil(getBombCooldownRemainingMs() / 1000)}s`;
+      bombAttackStatus.textContent = "0";
     }
+  }
+
+  if (bombAttackTimer) {
+    if (!gameRunning || isGameOverVisible()) {
+      bombAttackTimer.textContent = "";
+      bombAttackTimer.hidden = true;
+    } else if (onCooldown) {
+      bombAttackTimer.hidden = false;
+      bombAttackTimer.textContent = `${Math.ceil(cooldownMs / 1000)}s`;
+    } else {
+      bombAttackTimer.textContent = "";
+      bombAttackTimer.hidden = true;
+    }
+  }
+
+  if (bombAttackHud) {
+    bombAttackHud.classList.toggle("cooldown", onCooldown);
   }
 
   if (skillPointsDisplay) skillPointsDisplay.innerText = player.skillPoints;
@@ -6178,7 +6199,8 @@ function finalizeGameOver() {
 
 
 function syncBombCharges() {
-  if (bombCharges >= BOMB_MAX_CHARGES) return;
+  if (bombCharges > 0) return;
+  if (bombReadyAt <= 0) return;
   if (Date.now() >= bombReadyAt) {
     bombCharges = BOMB_MAX_CHARGES;
     bombReadyAt = 0;

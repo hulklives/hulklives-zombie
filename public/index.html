@@ -436,6 +436,11 @@ box-shadow:0 8px 24px rgba(0,0,0,0.35);
 pointer-events:none;
 }
 
+.bomb-attack-hud.cooldown{
+border-color:rgba(255,120,80,0.22);
+background:rgba(8,10,12,0.88);
+}
+
 .bomb-attack-key{
 font-size:13px;
 font-weight:700;
@@ -451,6 +456,18 @@ border-radius:999px;
 background:rgba(255,136,68,0.16);
 border:1px solid rgba(255,136,68,0.28);
 color:#ffd9bf;
+font-size:12px;
+font-weight:700;
+text-align:center;
+}
+
+.bomb-attack-timer{
+min-width:42px;
+padding:4px 8px;
+border-radius:999px;
+background:rgba(255,90,60,0.14);
+border:1px solid rgba(255,90,60,0.28);
+color:#ffc1ad;
 font-size:12px;
 font-weight:700;
 text-align:center;
@@ -3771,7 +3788,8 @@ TikTok @hulklives
 <canvas id="c" width="1280" height="800"></canvas>
 <div id="bomb-attack-hud" class="bomb-attack-hud" hidden>
 <span class="bomb-attack-key">R = BOMB</span>
-<span class="bomb-attack-status" id="bomb-attack-status">x2</span>
+<span class="bomb-attack-status" id="bomb-attack-status">x3</span>
+<span class="bomb-attack-timer" id="bomb-attack-timer" hidden></span>
 </div>
 <div id="bonus-offer">
 <h3>🎁 Bonus Chance!</h3>
@@ -4194,7 +4212,7 @@ TikTok @hulklives
 </div>
 
 <script src="game-pro.js?v=3"></script>
-<script src="game.js?v=170"></script>
+<script src="game.js?v=172"></script>
 <script src="admin-panel.js?v=11"></script>
 
 </body>
