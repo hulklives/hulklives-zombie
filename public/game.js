@@ -51,8 +51,8 @@ const SKILL_POINT_KILL_INTERVAL = 5;
 const WAVE_BOSS_INTERVAL = 10;
 const WAVE_BOSS_BASE_SIZE = 138;
 const WAVE_BOSS_MAX_SIZE = 212;
-const WAVE_BOSS_SPEED_MULT = 1.28;
-const WAVE_BOSS_BASE_SPEED = 3.2;
+const WAVE_BOSS_SPEED_MULT = 0.86;
+const WAVE_BOSS_BASE_SPEED = 2.15;
 const WAVE_BOSS_SP_REWARD = 30;
 const WAVE_BOSS_XP_REWARD = 150;
 
@@ -4828,8 +4828,8 @@ function getWaveBossStats() {
 
   const waveTier = wave / WAVE_BOSS_INTERVAL;
   const speed =
-    (WAVE_BOSS_BASE_SPEED + speedBonus * 0.95 + boost * 0.24 + waveTier * 0.42) *
-    (0.96 + ease * 0.2) *
+    (WAVE_BOSS_BASE_SPEED + speedBonus * 0.75 + boost * 0.15 + waveTier * 0.26) *
+    (0.9 + ease * 0.14) *
     zombieSpeedMult *
     WAVE_BOSS_SPEED_MULT;
 
@@ -4933,7 +4933,7 @@ function spawnWaveBoss() {
     damage: stats.damage,
     hitCooldown: 36,
     facingAngle: Math.atan2(toPlayerY, toPlayerX),
-    jitter: Math.random() * 0.14 + 0.9
+    jitter: Math.random() * 0.35 + 0.55
   });
 }
 
@@ -6509,7 +6509,7 @@ function update() {
       }
       z.facingAngle = Math.atan2(dy, dx);
       z.animTick = (z.animTick || 0) + 1;
-      const animStep = z.tier === "waveBoss" || z.isWaveBoss ? 4 : 6;
+      const animStep = z.tier === "waveBoss" || z.isWaveBoss ? 7 : 6;
       if (z.animTick % animStep === 0) {
         z.animFrame = ((z.animFrame || 0) + 1) % zombieSprites.move.frameCount;
       }
