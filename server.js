@@ -51,6 +51,7 @@ const {
 const { attachCoopLobbyWebSocket } = require("./coop-lobby");
 const {
   acceptFriendRequest,
+  areFriends,
   cancelFriendRequest,
   declineFriendRequest,
   getFriendsSnapshot,
@@ -1043,7 +1044,8 @@ async function startServer() {
 
   attachCoopLobbyWebSocket(server, {
     verifySession: require("./auth").verifySession,
-    getPlayerLobbyProfile
+    getPlayerLobbyProfile,
+    areFriends
   });
 
   server.listen(port, () => {

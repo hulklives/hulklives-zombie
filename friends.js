@@ -194,6 +194,14 @@ function enrichFriend(entry) {
   };
 }
 
+function areFriends(displayName, otherUsername) {
+  const userKey = usernameKey(displayName);
+  const otherKey = usernameKey(normalizeNickname(otherUsername));
+  if (!userKey || !otherKey) return false;
+  const record = getRecord(userKey);
+  return findFriend(record.friends, otherKey) >= 0;
+}
+
 function getFriendsSnapshot(displayName) {
   const key = usernameKey(displayName);
   const record = getRecord(key);
@@ -217,6 +225,7 @@ function getFriendsSnapshot(displayName) {
 
 module.exports = {
   acceptFriendRequest,
+  areFriends,
   cancelFriendRequest,
   declineFriendRequest,
   getFriendsSnapshot,

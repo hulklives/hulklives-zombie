@@ -103,7 +103,10 @@ function renderFriendsPanel(payload) {
     <strong class="friends-name">${escapeFriendsHtml(friend.username)}</strong>
     <span class="friends-status">${escapeFriendsHtml(status)}</span>
   </div>
-  <button type="button" class="friends-action-btn danger" onclick="removeFriendAccount('${escapeFriendsHtml(friend.username)}')">Remove</button>
+  <div class="friends-row-actions">
+    ${friend.online ? `<button type="button" class="friends-action-btn" onclick="inviteFriendToCoop('${escapeFriendsHtml(friend.username)}')">Co-op</button>` : ""}
+    <button type="button" class="friends-action-btn danger" onclick="removeFriendAccount('${escapeFriendsHtml(friend.username)}')">Remove</button>
+  </div>
 </div>`;
       })
       .join("");

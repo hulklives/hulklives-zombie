@@ -3221,52 +3221,128 @@ gap:12px;
 margin-bottom:8px;
 }
 
-.coop-lobby-join-row{
-display:grid;
-grid-template-columns:1fr auto;
-gap:8px;
+.coop-lobby-invite-section{
+margin:0 0 14px;
+text-align:left;
 }
 
-.coop-lobby-join-row input{
-min-width:0;
-border-radius:10px;
-border:1px solid rgba(120,200,255,0.24);
-background:rgba(4,12,18,0.92);
-color:#fff;
-padding:12px 14px;
-font:inherit;
+.coop-lobby-invite-section[hidden]{
+display:none !important;
+}
+
+.coop-lobby-invite-title{
+margin:0 0 8px;
+font-size:12px;
+letter-spacing:0.1em;
 text-transform:uppercase;
-letter-spacing:0.12em;
+color:#9ec6dd;
+}
+
+.coop-lobby-friends{
+display:grid;
+gap:8px;
+max-height:180px;
+overflow-y:auto;
+}
+
+.coop-friend-row{
+display:flex;
+align-items:center;
+justify-content:space-between;
+gap:10px;
+padding:10px 12px;
+border-radius:12px;
+border:1px solid rgba(120,200,255,0.16);
+background:rgba(255,255,255,0.03);
+}
+
+.coop-friend-copy{
+display:flex;
+flex-direction:column;
+gap:2px;
+min-width:0;
+}
+
+.coop-friend-copy strong{
+font-size:13px;
+color:#dff4ff;
+}
+
+.coop-friend-copy span{
+font-size:11px;
+color:#9ec6dd;
+}
+
+.coop-invite-btn{
+min-width:84px;
+padding:8px 12px;
+font-size:12px;
+}
+
+.coop-friends-empty{
+padding:10px 12px;
+border-radius:12px;
+background:rgba(255,255,255,0.03);
+font-size:12px;
+color:#9ec6dd;
 text-align:center;
+}
+
+#coop-invite-modal{
+display:none;
+position:fixed;
+inset:0;
+background:rgba(2,14,8,0.88);
+z-index:calc(var(--z-menu-modal) + 2);
+justify-content:center;
+align-items:center;
+padding:20px;
+}
+
+#coop-invite-modal.open{
+display:flex;
+}
+
+.coop-invite-panel{
+width:min(420px, 92vw);
+padding:22px 20px 18px;
+border-radius:16px;
+border:1px solid rgba(120,200,255,0.28);
+background:linear-gradient(165deg, rgba(10,24,34,0.98), rgba(6,14,20,0.96));
+box-shadow:0 24px 60px rgba(0,0,0,0.42);
+color:#e8f7ff;
+text-align:center;
+}
+
+.coop-invite-panel h2{
+margin:0 0 10px;
+font-size:24px;
+color:#dff4ff;
+}
+
+.coop-invite-copy{
+margin:0 0 16px;
+font-size:14px;
+line-height:1.5;
+color:#9ec6dd;
+}
+
+.coop-invite-actions{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:10px;
+}
+
+.friends-row-actions{
+display:flex;
+gap:6px;
+flex-wrap:wrap;
+justify-content:flex-end;
 }
 
 .coop-lobby-room-panel[hidden],
 .coop-lobby-create-panel[hidden]{
 display:none !important;
-}
-
-.coop-lobby-code-wrap{
-margin:0 0 14px;
-padding:12px;
-border-radius:12px;
-background:rgba(120,200,255,0.08);
-border:1px solid rgba(120,200,255,0.18);
-}
-
-.coop-lobby-code-label{
-display:block;
-font-size:11px;
-letter-spacing:0.12em;
-text-transform:uppercase;
-color:#9ec6dd;
-margin-bottom:6px;
-}
-
-.coop-lobby-code{
-font-size:28px;
-font-weight:800;
-letter-spacing:0.18em;
-color:#dff4ff;
 }
 
 .coop-lobby-slots{
@@ -4632,16 +4708,13 @@ TikTok @hulklives
 <h2>Co-op Lobby</h2>
 <p class="coop-lobby-copy">1–4 players · same waves · own HP & XP · friendly fire off · all must Ready</p>
 <div id="coop-lobby-create-panel" class="coop-lobby-create-panel">
-<button type="button" class="menu-primary-btn" onclick="createCoopLobbyRoom()">Create room</button>
-<div class="coop-lobby-join-row">
-<input id="coop-lobby-join-code" type="text" maxlength="6" placeholder="ROOM CODE" autocomplete="off">
-<button type="button" class="menu-mode-btn" onclick="joinCoopLobbyRoom()">Join</button>
-</div>
+<button type="button" class="menu-primary-btn" onclick="createCoopLobbyRoom()">Create lobby</button>
+<p class="coop-lobby-copy">Invite online friends from your friends list once the lobby is open.</p>
 </div>
 <div id="coop-lobby-room-panel" class="coop-lobby-room-panel" hidden>
-<div class="coop-lobby-code-wrap">
-<span class="coop-lobby-code-label">Room code</span>
-<div id="coop-lobby-code" class="coop-lobby-code">------</div>
+<div id="coop-lobby-invite-section" class="coop-lobby-invite-section" hidden>
+<p class="coop-lobby-invite-title">Invite online friends</p>
+<div id="coop-lobby-friends" class="coop-lobby-friends"></div>
 </div>
 <div id="coop-lobby-slots" class="coop-lobby-slots"></div>
 <p id="coop-lobby-countdown" class="coop-lobby-countdown" hidden aria-live="polite"></p>
@@ -4651,6 +4724,17 @@ TikTok @hulklives
 </div>
 </div>
 <p id="coop-lobby-status" class="coop-lobby-status" aria-live="polite"></p>
+</div>
+</div>
+
+<div id="coop-invite-modal" aria-hidden="true">
+<div class="coop-invite-panel">
+<h2>Co-op invite</h2>
+<p id="coop-invite-copy" class="coop-invite-copy"></p>
+<div class="coop-invite-actions">
+<button type="button" class="menu-primary-btn" onclick="acceptCoopInvite()">Join lobby</button>
+<button type="button" class="menu-secondary-btn" onclick="declineCoopInvite()">Decline</button>
+</div>
 </div>
 </div>
 
@@ -4856,8 +4940,8 @@ TikTok @hulklives
 <script src="game-pro.js?v=3"></script>
 <script src="game.js?v=192"></script>
 <script src="chat.js?v=2"></script>
-<script src="friends.js?v=1"></script>
-<script src="coop-lobby.js?v=1"></script>
+<script src="friends.js?v=2"></script>
+<script src="coop-lobby.js?v=2"></script>
 <script src="admin-panel.js?v=15"></script>
 
 </body>

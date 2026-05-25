@@ -1,16 +1,26 @@
 const { WebSocketServer } = require("ws");
 const crypto = require("crypto");
+const { normalizeNickname } = require("./save-validation");
+const { usernameKey } = require("./auth");
 
 const MAX_PLAYERS = 4;
 const ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const COUNTDOWN_SECONDS = 3;
+const INVITE_TTL_MS = 90000;
 
 const rooms = new Map();
 const socketRoom = new Map();
+const coopSocketsByKey = new Map();
+const pendingInvites = new Map();
 
 function send(ws, payload) {
   if (ws.readyState !== ws.OPEN) return;
   ws.send(JSON.stringify(payload));
+}
+
+function sendToUser(usernameKey, payload) {
+  const ws = coopSocketsByKey.get(usernameKey);
+  if (ws) send(ws, payload);
 }
 
 function generateRoomCode() {
@@ -65,10 +75,26 @@ function clearRoomTimer(room) {
   }
 }
 
+function clearInvitesForRoom(code) {
+  for (const [key, invite] of pendingInvites.entries()) {
+    if (invite.roomCode === code) pendingInvites.delete(key);
+  }
+}
+
+function purgeExpiredInvites() {
+  const now = Date.now();
+  for (const [key, invite] of pendingInvites.entries()) {
+    if (!invite.expiresAt || invite.expiresAt <= now) {
+      pendingInvites.delete(key);
+    }
+  }
+}
+
 function removeRoom(code) {
   const room = rooms.get(code);
   if (!room) return;
   clearRoomTimer(room);
+  clearInvitesForRoom(code);
   rooms.delete(code);
 }
 
@@ -177,17 +203,17 @@ function joinRoom(ws, code, helpers) {
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, "");
   if (normalized.length !== 6) {
-    send(ws, { type: "lobby_error", error: "Enter a valid 6-character room code." });
+    send(ws, { type: "lobby_error", error: "Invalid lobby invite." });
     return;
   }
 
   const room = rooms.get(normalized);
   if (!room) {
-    send(ws, { type: "lobby_error", error: "Room not found." });
+    send(ws, { type: "lobby_error", error: "Lobby no longer exists." });
     return;
   }
   if (room.status !== "waiting") {
-    send(ws, { type: "lobby_error", error: "That room is already starting." });
+    send(ws, { type: "lobby_error", error: "That lobby is already starting." });
     return;
   }
 
@@ -201,7 +227,7 @@ function joinRoom(ws, code, helpers) {
   if (slot < 0) {
     slot = findPlayerSlot(room);
     if (slot < 0) {
-      send(ws, { type: "lobby_error", error: "Room is full (max 4 players)." });
+      send(ws, { type: "lobby_error", error: "Lobby is full (max 4 players)." });
       return;
     }
   }
@@ -240,6 +266,141 @@ function setReady(ws, ready) {
   tryStartCountdown(room);
 }
 
+function inviteFriend(ws, username, helpers) {
+  purgeExpiredInvites();
+
+  const code = socketRoom.get(ws);
+  if (!code) {
+    send(ws, { type: "lobby_error", error: "Create a lobby before inviting friends." });
+    return;
+  }
+
+  const room = rooms.get(code);
+  if (!room) return;
+
+  if (room.hostUsername !== ws.user.username) {
+    send(ws, { type: "lobby_error", error: "Only the host can invite friends." });
+    return;
+  }
+
+  if (room.status !== "waiting") {
+    send(ws, { type: "lobby_error", error: "Invites are closed while the run is starting." });
+    return;
+  }
+
+  const targetName = normalizeNickname(username);
+  if (!targetName) {
+    send(ws, { type: "lobby_error", error: "Enter a valid friend name." });
+    return;
+  }
+
+  if (targetName.toLowerCase() === ws.user.username.toLowerCase()) {
+    send(ws, { type: "lobby_error", error: "You cannot invite yourself." });
+    return;
+  }
+
+  if (!helpers.areFriends(ws.user.username, targetName)) {
+    send(ws, { type: "lobby_error", error: "You can only invite friends." });
+    return;
+  }
+
+  const targetKey = usernameKey(targetName);
+  if (!targetKey) {
+    send(ws, { type: "lobby_error", error: "Player not found." });
+    return;
+  }
+
+  const alreadyInRoom = getOccupiedPlayers(room).some(
+    (player) => player.username.toLowerCase() === targetName.toLowerCase()
+  );
+  if (alreadyInRoom) {
+    send(ws, { type: "lobby_error", error: `${targetName} is already in the lobby.` });
+    return;
+  }
+
+  if (getOccupiedPlayers(room).length >= MAX_PLAYERS) {
+    send(ws, { type: "lobby_error", error: "Lobby is full (max 4 players)." });
+    return;
+  }
+
+  const targetWs = coopSocketsByKey.get(targetKey);
+  if (!targetWs || targetWs.readyState !== targetWs.OPEN) {
+    send(ws, { type: "lobby_error", error: `${targetName} is offline.` });
+    return;
+  }
+
+  pendingInvites.set(targetKey, {
+    fromUsername: ws.user.username,
+    fromKey: ws.user.usernameKey,
+    roomCode: code,
+    expiresAt: Date.now() + INVITE_TTL_MS
+  });
+
+  send(targetWs, {
+    type: "coop_invite_received",
+    fromUsername: ws.user.username,
+    playerCount: getOccupiedPlayers(room).length,
+    maxPlayers: MAX_PLAYERS
+  });
+
+  send(ws, { type: "coop_invite_sent", username: targetName });
+}
+
+function acceptInvite(ws, fromUsername, helpers) {
+  purgeExpiredInvites();
+
+  const inviteeKey = ws.user.usernameKey;
+  const invite = pendingInvites.get(inviteeKey);
+  if (!invite) {
+    send(ws, { type: "lobby_error", error: "No pending co-op invite." });
+    return;
+  }
+
+  if (invite.expiresAt <= Date.now()) {
+    pendingInvites.delete(inviteeKey);
+    send(ws, { type: "lobby_error", error: "That invite has expired." });
+    return;
+  }
+
+  if (
+    fromUsername &&
+    invite.fromUsername.toLowerCase() !== normalizeNickname(fromUsername).toLowerCase()
+  ) {
+    send(ws, { type: "lobby_error", error: "Invite not found." });
+    return;
+  }
+
+  pendingInvites.delete(inviteeKey);
+  joinRoom(ws, invite.roomCode, helpers);
+
+  sendToUser(invite.fromKey, {
+    type: "coop_invite_accepted",
+    username: ws.user.username
+  });
+}
+
+function declineInvite(ws, fromUsername) {
+  purgeExpiredInvites();
+
+  const inviteeKey = ws.user.usernameKey;
+  const invite = pendingInvites.get(inviteeKey);
+  if (!invite) return;
+
+  if (
+    fromUsername &&
+    invite.fromUsername.toLowerCase() !== normalizeNickname(fromUsername).toLowerCase()
+  ) {
+    return;
+  }
+
+  pendingInvites.delete(inviteeKey);
+
+  sendToUser(invite.fromKey, {
+    type: "coop_invite_declined",
+    username: ws.user.username
+  });
+}
+
 function handleMessage(ws, message, helpers) {
   switch (message?.type) {
     case "lobby_create":
@@ -247,6 +408,15 @@ function handleMessage(ws, message, helpers) {
       break;
     case "lobby_join":
       joinRoom(ws, message.code, helpers);
+      break;
+    case "lobby_invite":
+      inviteFriend(ws, message.username, helpers);
+      break;
+    case "coop_invite_accept":
+      acceptInvite(ws, message.fromUsername, helpers);
+      break;
+    case "coop_invite_decline":
+      declineInvite(ws, message.fromUsername);
       break;
     case "lobby_leave":
       leaveRoom(ws);
@@ -274,6 +444,13 @@ function attachCoopLobbyWebSocket(server, helpers) {
     }
 
     ws.user = { username: session.displayName, usernameKey: session.usernameKey };
+
+    const previous = coopSocketsByKey.get(ws.user.usernameKey);
+    if (previous && previous !== ws) {
+      previous.close(4000, "Replaced");
+    }
+    coopSocketsByKey.set(ws.user.usernameKey, ws);
+
     ws.isAlive = true;
 
     ws.on("pong", () => {
@@ -290,6 +467,9 @@ function attachCoopLobbyWebSocket(server, helpers) {
     });
 
     ws.on("close", () => {
+      if (coopSocketsByKey.get(ws.user.usernameKey) === ws) {
+        coopSocketsByKey.delete(ws.user.usernameKey);
+      }
       leaveRoom(ws);
     });
 
@@ -297,6 +477,7 @@ function attachCoopLobbyWebSocket(server, helpers) {
   });
 
   const heartbeat = setInterval(() => {
+    purgeExpiredInvites();
     for (const ws of wss.clients) {
       if (!ws.isAlive) {
         ws.terminate();

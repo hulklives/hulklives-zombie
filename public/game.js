@@ -2385,6 +2385,7 @@ async function logoutAccount() {
   updateUI();
   if (typeof refreshGlobalChat === "function") refreshGlobalChat();
   if (typeof refreshFriendsPanel === "function") refreshFriendsPanel();
+  if (typeof disconnectCoopLobbySocket === "function") disconnectCoopLobbySocket();
 }
 
 function savePlayerName() {
@@ -2461,6 +2462,7 @@ function restoreStartMenuAfterModal() {
 function syncAuthSidePanels() {
   if (typeof refreshGlobalChat === "function") refreshGlobalChat(true);
   if (typeof refreshFriendsPanel === "function") refreshFriendsPanel(true);
+  if (typeof initCoopLobbyConnection === "function") initCoopLobbyConnection();
 }
 
 function repairUiState() {
