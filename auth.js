@@ -163,9 +163,31 @@ function loginAccount(username, password) {
   return { ok: true, token, username: account.displayName };
 }
 
+function saveEntryScore(data) {
+  if (!data || typeof data !== "object") return 0;
+  const kills = Number(data.kills || 0);
+  const bestWave = Number(data.bestWave || 0);
+  const totalXp = Number(data.totalXp || 0);
+  return totalXp * 10 + kills + bestWave * 5;
+}
+
 function findSaveKeyForAccount(saves, displayName) {
   const key = usernameKey(displayName);
-  return Object.keys(saves).find((name) => usernameKey(name) === key) || null;
+  const matches = Object.keys(saves || {}).filter((name) => usernameKey(name) === key);
+  if (!matches.length) return null;
+  if (matches.length === 1) return matches[0];
+
+  let bestKey = matches[0];
+  let bestScore = saveEntryScore(saves[bestKey]);
+  for (let i = 1; i < matches.length; i += 1) {
+    const name = matches[i];
+    const score = saveEntryScore(saves[name]);
+    if (score > bestScore) {
+      bestScore = score;
+      bestKey = name;
+    }
+  }
+  return bestKey;
 }
 
 function requireAuth(req, res, next) {

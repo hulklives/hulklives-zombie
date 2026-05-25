@@ -1189,6 +1189,7 @@ let authToken = "";
 let authMode = "login";
 let canViewFeedbackInbox = false;
 let isGameAdmin = false;
+let saveHydrated = false;
 
 
 
@@ -2127,6 +2128,7 @@ function handleSessionExpired(message = "Session expired. Log in again.") {
   playerName = "";
   canViewFeedbackInbox = false;
   isGameAdmin = false;
+  saveHydrated = false;
   updateGameAdminUI(0);
   gameRunning = false;
   paused = false;
@@ -2238,9 +2240,6 @@ async function completeLogin(username, token) {
   saveAuthToken(token);
   savePlayerName();
   hideNicknameScreen();
-  enterMainMenuFlow();
-  repairUiState();
-  syncAuthSidePanels();
 
   const saveResult = await loadSave();
   if (!authToken || saveResult?.sessionExpired) return;
@@ -2374,6 +2373,7 @@ async function logoutAccount() {
   playerName = "";
   canViewFeedbackInbox = false;
   isGameAdmin = false;
+  saveHydrated = false;
   updateGameAdminUI(0);
   resetSessionState();
   hideStartMenu();
@@ -4458,11 +4458,23 @@ function checkWaveMilestonesOnStart() {
 
 
 
+function hasMeaningfulSaveData(data) {
+  return !!(
+    data &&
+    typeof data === "object" &&
+    (Number(data.kills || 0) > 0 ||
+      Number(data.bestWave || 0) > 0 ||
+      Number(data.totalXp || 0) > 0 ||
+      Number(data.skillPoints || 0) > 0 ||
+      (Array.isArray(data.unlockedAchievements) && data.unlockedAchievements.length > 0))
+  );
+}
+
 function mergeSaveData(serverData, localData) {
   const s = serverData && typeof serverData === "object" ? serverData : null;
   const l = localData && typeof localData === "object" ? localData : {};
 
-  if (authToken && s) {
+  if (authToken && s && hasMeaningfulSaveData(s)) {
     return {
       kills: Number(s.kills || 0),
       skillPoints: Number(s.skillPoints || 0),
@@ -4657,7 +4669,8 @@ async function loadSave() {
     Number(data.totalXp || 0) === 0 &&
     Number(data.skillPoints || 0) === 0 &&
     Number(data.upgrades?.hp || 0) === 0 &&
-    Number(data.upgrades?.bulletSpeed || 0) === 0;
+    Number(data.upgrades?.bulletSpeed || 0) === 0 &&
+    !hasMeaningfulSaveData(localData);
 
   if (isFreshSave) {
     resetSessionState();
@@ -4665,13 +4678,14 @@ async function loadSave() {
     applyWeaponProgressFromSave(data);
     checkAndUnlockMonthlyAchievement();
     localStorage.setItem(getSaveKey(), JSON.stringify(data));
+    saveHydrated = true;
     return;
   }
 
   if (
     data &&
     typeof data === "object" &&
-    (data.kills > 0 || data.bestWave > 0 || data.totalXp > 0)
+    (data.kills > 0 || data.bestWave > 0 || data.totalXp > 0 || data.skillPoints > 0)
   ) {
 
     player.kills = Number(data.kills || 0);
@@ -4718,6 +4732,7 @@ async function loadSave() {
   }
 
   checkAndUnlockMonthlyAchievement();
+  saveHydrated = true;
 }
 
 
@@ -4758,6 +4773,7 @@ function saveProgress(options = {}) {
   localStorage.setItem(getSaveKey(), JSON.stringify(data));
 
   if (!playerName || !authToken) return;
+  if (!saveHydrated && options.forceServer !== true) return;
 
   queueServerSave(options);
 }
@@ -7731,8 +7747,6 @@ async function init() {
   try {
   if (await tryRestoreSession()) {
     hideNicknameScreen();
-    enterMainMenuFlow();
-    repairUiState();
     const saveResult = await loadSave();
     if (authToken && !saveResult?.sessionExpired) {
       await refreshAccountAccess();
@@ -7741,15 +7755,13 @@ async function init() {
       updateAchievementsUI();
       updateMonthlyAchievementHUD();
       refreshLeaderboard();
-      enterMainMenuFlow();
-      repairUiState();
     }
+    enterMainMenuFlow();
+    repairUiState();
   } else {
     refreshAuthTokenFromStorage();
     if (authToken) {
       hideNicknameScreen();
-      enterMainMenuFlow();
-      repairUiState();
       const saveResult = await loadSave();
       if (authToken && !saveResult?.sessionExpired) {
         await refreshAccountAccess();
@@ -7758,9 +7770,9 @@ async function init() {
         updateAchievementsUI();
         updateMonthlyAchievementHUD();
         refreshLeaderboard();
-        enterMainMenuFlow();
-        repairUiState();
       }
+      enterMainMenuFlow();
+      repairUiState();
     } else {
       hideCenterHud();
       applyArenaTheme();

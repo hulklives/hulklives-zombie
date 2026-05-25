@@ -153,6 +153,46 @@ function purgeBlockedSaves() {
   if (changed) saveSaves();
 }
 
+function consolidateDuplicateSaves() {
+  const grouped = new Map();
+
+  for (const [name, data] of Object.entries(saves)) {
+    const accountKey = usernameKey(name);
+    if (!grouped.has(accountKey)) grouped.set(accountKey, []);
+    grouped.get(accountKey).push({ name, data });
+  }
+
+  let changed = false;
+
+  for (const entries of grouped.values()) {
+    if (entries.length <= 1) continue;
+
+    entries.sort((a, b) => computeRankScore(b.data || {}) - computeRankScore(a.data || {}));
+    let merged = { ...(entries[0].data || {}) };
+
+    for (let i = 1; i < entries.length; i += 1) {
+      const result = mergePlayerSaveSecure(merged, entries[i].data || {});
+      if (result.ok) merged = result.data;
+    }
+
+    const canonicalName = entries[0].name;
+    saves[canonicalName] = merged;
+
+    for (const entry of entries) {
+      if (entry.name !== canonicalName && Object.prototype.hasOwnProperty.call(saves, entry.name)) {
+        delete saves[entry.name];
+        changed = true;
+      }
+    }
+
+    if (JSON.stringify(saves[canonicalName]) !== JSON.stringify(entries[0].data)) {
+      changed = true;
+    }
+  }
+
+  if (changed) saveSaves();
+}
+
 async function loadSaves() {
   try {
     saves = (await storage.readJson("saves", {})) || {};
@@ -173,6 +213,7 @@ async function loadSaves() {
   }
 
   purgeBlockedSaves();
+  consolidateDuplicateSaves();
   if (changed) saveSaves();
 }
 
