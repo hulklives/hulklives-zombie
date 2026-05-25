@@ -1306,7 +1306,7 @@ const BOMB_COOLDOWN_MS = 30000;
 const BOMB_MAX_CHARGES = 3;
 const BOMB_THROW_SPEED = 8.5;
 const BOMB_BLAST_RADIUS = 148;
-const BOMB_DAMAGE_MULT = 5;
+const BOMB_DAMAGE_MULT = 6.5;
 const BOMB_MAX_FLIGHT_MS = 1200;
 const BOMB_MAX_RANGE = 420;
 
@@ -6370,7 +6370,7 @@ function detonatePlayerBomb(bomb) {
     const dist = Math.hypot(cx - zcx, cy - zcy);
     if (dist > hitRadius) continue;
 
-    const falloff = 1 - Math.min(1, dist / hitRadius) * 0.38;
+    const falloff = 1 - Math.min(1, dist / hitRadius) * 0.32;
     damageZombie(
       z,
       i,
