@@ -2171,7 +2171,6 @@ function handleSessionExpired(message = "Session expired. Log in again.") {
   updateUI();
 
   if (typeof refreshGlobalChat === "function") refreshGlobalChat();
-  if (typeof refreshOnlinePlayers === "function") refreshOnlinePlayers(true);
 }
 
 function refreshAuthTokenFromStorage() {
@@ -2384,7 +2383,6 @@ async function logoutAccount() {
   setAuthError("");
   updateUI();
   if (typeof refreshGlobalChat === "function") refreshGlobalChat();
-  if (typeof refreshOnlinePlayers === "function") refreshOnlinePlayers(true);
 }
 
 function savePlayerName() {
@@ -2459,7 +2457,6 @@ function restoreStartMenuAfterModal() {
 
 function syncAuthSidePanels() {
   if (typeof refreshGlobalChat === "function") refreshGlobalChat(true);
-  if (typeof refreshOnlinePlayers === "function") refreshOnlinePlayers(true);
 }
 
 function repairUiState() {
@@ -5563,7 +5560,6 @@ function startWave() {
     updateUI();
     showCenterHudBriefly();
   }
-  if (typeof reportOnlinePresence === "function") reportOnlinePresence();
 }
 
 
@@ -6223,7 +6219,6 @@ async function beginRun(mode = "campaign") {
     ensureRenderLoop();
   }
 
-  if (typeof reportOnlinePresence === "function") reportOnlinePresence();
 }
 
 
@@ -6292,7 +6287,6 @@ function returnToMainMenu() {
   saveProgress({ forceServer: true, quiet: true });
   updateUI();
   showStartMenu();
-  if (typeof reportOnlinePresence === "function") reportOnlinePresence();
 }
 
 
@@ -7543,15 +7537,6 @@ window.addEventListener("beforeunload", () => {
 
 
 
-function getOnlinePresenceState() {
-  return {
-    inGame: Boolean(gameRunning),
-    status: !gameRunning ? "menu" : isFreeplayMode() ? "freeplay" : "playing",
-    wave: isFreeplayMode() ? 0 : Number(wave) || 0
-  };
-}
-
-window.getOnlinePresenceState = getOnlinePresenceState;
 window.submitNickname = submitNickname;
 window.submitAuth = submitAuth;
 window.setAuthMode = setAuthMode;

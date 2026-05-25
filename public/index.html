@@ -893,142 +893,6 @@ font-size:9px;
 padding:2px 6px;
 }
 
-#online-players-panel{
-display:flex;
-flex-direction:column;
-overflow:hidden;
-background:rgba(2,12,6,0.55);
-border:1px solid rgba(61,255,168,0.22);
-box-shadow:
-0 12px 40px rgba(0,0,0,0.28),
-inset 0 0 0 1px rgba(255,255,255,0.04);
-backdrop-filter:blur(8px);
--webkit-backdrop-filter:blur(8px);
-padding:16px 16px 14px;
-border-radius:16px;
-color:var(--text-soft);
-}
-
-#start-menu #online-players-panel{
-position:sticky;
-top:clamp(24px, 4vh, 40px);
-min-height:280px;
-max-height:min(520px, calc(100vh - 80px));
-}
-
-#online-players-panel .panel-header{
-margin-bottom:10px;
-padding-bottom:8px;
-border-bottom:1px solid rgba(61,255,168,0.12);
-}
-
-#online-players-panel .panel-eyebrow{
-font-size:10px;
-margin-bottom:4px;
-}
-
-#online-players-panel .panel-title{
-margin:0;
-font-size:13px;
-font-weight:800;
-letter-spacing:0.1em;
-text-transform:uppercase;
-color:#d8ffe8;
-}
-
-#online-players-count{
-display:inline-flex;
-align-items:center;
-justify-content:center;
-min-width:18px;
-height:18px;
-margin-left:6px;
-padding:0 5px;
-border-radius:999px;
-background:rgba(93,255,176,0.16);
-border:1px solid rgba(93,255,176,0.28);
-font-size:10px;
-color:#d8ffe8;
-vertical-align:middle;
-}
-
-.online-players-list{
-flex:1 1 auto;
-min-height:120px;
-max-height:none;
-overflow-y:auto;
-display:flex;
-flex-direction:column;
-gap:8px;
-padding-right:4px;
-}
-
-.online-players-empty{
-font-size:11px;
-line-height:1.45;
-color:var(--text-muted);
-padding:6px 2px;
-}
-
-.online-player-row{
-display:flex;
-align-items:flex-start;
-gap:8px;
-padding:6px 7px;
-border-radius:10px;
-background:rgba(255,255,255,0.03);
-border:1px solid rgba(255,255,255,0.05);
-}
-
-.online-player-row.in-game{
-border-color:rgba(93,255,176,0.18);
-background:rgba(93,255,176,0.05);
-}
-
-.online-player-dot{
-flex:0 0 auto;
-width:8px;
-height:8px;
-margin-top:4px;
-border-radius:50%;
-background:#7d8a84;
-box-shadow:0 0 0 2px rgba(255,255,255,0.04);
-}
-
-.online-player-row.in-game .online-player-dot{
-background:#5dffb0;
-box-shadow:0 0 8px rgba(93,255,176,0.45);
-}
-
-.online-player-copy{
-min-width:0;
-display:flex;
-flex-direction:column;
-gap:2px;
-}
-
-.online-player-name{
-font-size:11px;
-color:#d8ffe8;
-}
-
-.online-player-role{
-font-size:9px;
-font-weight:800;
-letter-spacing:0.08em;
-text-transform:uppercase;
-color:#ffd88a;
-}
-
-.online-player-status{
-font-size:10px;
-color:var(--text-muted);
-}
-
-#online-players-panel.logged-out .online-players-list{
-opacity:0.72;
-}
-
 #global-chat{
 flex:1 1 auto;
 min-height:170px;
@@ -2215,35 +2079,11 @@ pointer-events:none;
 }
 
 .start-menu-content{
-width:100%;
-min-width:0;
-}
-
-.start-menu-layout{
-display:grid;
-grid-template-columns:minmax(0, 1fr) minmax(260px, 300px);
-gap:clamp(20px, 3vw, 36px);
-width:min(1080px, 100%);
+width:min(920px, 100%);
 margin:0 auto;
-align-items:start;
-}
-
-@media (max-width: 920px){
-.start-menu-layout{
-grid-template-columns:1fr;
-}
-
-#start-menu #online-players-panel{
-position:relative;
-top:auto;
-min-height:220px;
-max-height:260px;
-order:-1;
-}
 }
 
 .start-menu-inner > *,
-.start-menu-layout > *,
 .start-menu-content > *{
 position:relative;
 z-index:1;
@@ -4265,7 +4105,6 @@ TikTok @hulklives
 </div>
 <div class="start-menu-panel overlay-card">
 <div class="start-menu-inner">
-<div class="start-menu-layout">
 <div class="start-menu-content">
 <div id="start-menu-announcement" class="start-menu-announcement" hidden aria-live="polite">
 <span class="start-menu-announcement-icon">📣</span>
@@ -4294,16 +4133,6 @@ TikTok @hulklives
 </div>
 <p class="menu-hint start-menu-hint">Buy upgrades in the shop before you start — or jump straight into the zombies.</p>
 <button type="button" class="menu-secondary-btn danger start-menu-logout" onclick="logoutAccount()">Log out</button>
-</div>
-<aside id="online-players-panel" class="online-players-panel logged-out" aria-label="Players online">
-<div class="panel-header">
-<p class="panel-eyebrow">Players</p>
-<h2 class="panel-title">Online now <span id="online-players-count">0</span></h2>
-</div>
-<div id="online-players-list" class="online-players-list" aria-live="polite">
-<div class="online-players-empty">Log in to see who is online.</div>
-</div>
-</aside>
 </div>
 </div>
 </div>
@@ -4569,9 +4398,8 @@ TikTok @hulklives
 </div>
 
 <script src="game-pro.js?v=3"></script>
-<script src="game.js?v=187"></script>
+<script src="game.js?v=188"></script>
 <script src="chat.js?v=2"></script>
-<script src="online.js?v=8"></script>
 <script src="admin-panel.js?v=15"></script>
 
 </body>
