@@ -2212,7 +2212,7 @@ function setAuthMode(mode) {
 function showAuthScreen(mode = "login") {
   setAuthMode(mode);
   if (startOverlay) startOverlay.style.display = "flex";
-  if (startMenuOverlay) startMenuOverlay.style.display = "none";
+  hideStartMenu();
   hideTutorialOverlay();
   if (playerNameInput) {
     playerNameInput.value = loadSavedName();
@@ -2227,18 +2227,22 @@ async function completeLogin(username, token) {
   saveAuthToken(token);
   savePlayerName();
   hideNicknameScreen();
+  enterMainMenuFlow();
+  repairUiState();
+  syncAuthSidePanels();
+
   const saveResult = await loadSave();
   if (!authToken || saveResult?.sessionExpired) return;
+
   await refreshAccountAccess();
   applyArenaTheme();
   updateUI();
   updateAchievementsUI();
   updateMonthlyAchievementHUD();
   refreshLeaderboard();
-  if (typeof refreshGlobalChat === "function") refreshGlobalChat();
-  if (typeof refreshOnlinePlayers === "function") refreshOnlinePlayers(true);
   enterMainMenuFlow();
   repairUiState();
+  syncAuthSidePanels();
 }
 
 async function submitAuth() {
@@ -2390,7 +2394,11 @@ function isOverlayVisible(el) {
 }
 
 function isStartMenuVisible() {
-  return isOverlayVisible(startMenuOverlay);
+  return !!(
+    startMenuOverlay &&
+    startMenuOverlay.classList.contains("open") &&
+    isOverlayVisible(startMenuOverlay)
+  );
 }
 
 function isTutorialVisible() {
@@ -2418,6 +2426,12 @@ function syncMenuFallback() {
     !isStartMenuVisible();
 
   fallback.hidden = !showFallback;
+}
+
+function syncAuthSidePanels() {
+  if (!window.gameUiReady) return;
+  if (typeof refreshGlobalChat === "function") refreshGlobalChat(true);
+  if (typeof refreshOnlinePlayers === "function") refreshOnlinePlayers(true);
 }
 
 function repairUiState() {
@@ -2448,6 +2462,7 @@ function repairUiState() {
   }
 
   syncMenuFallback();
+  syncAuthSidePanels();
   ensureRenderLoop();
 }
 
@@ -7691,30 +7706,55 @@ async function init() {
     }
   });
 
+  try {
   if (await tryRestoreSession()) {
     hideNicknameScreen();
-    const saveResult = await loadSave();
-    if (!authToken || saveResult?.sessionExpired) return;
-    await refreshAccountAccess();
-    applyArenaTheme();
-    updateUI();
-    updateAchievementsUI();
-    updateMonthlyAchievementHUD();
-    refreshLeaderboard();
-    if (typeof refreshGlobalChat === "function") refreshGlobalChat();
-    if (typeof refreshOnlinePlayers === "function") refreshOnlinePlayers(true);
     enterMainMenuFlow();
     repairUiState();
+    const saveResult = await loadSave();
+    if (authToken && !saveResult?.sessionExpired) {
+      await refreshAccountAccess();
+      applyArenaTheme();
+      updateUI();
+      updateAchievementsUI();
+      updateMonthlyAchievementHUD();
+      refreshLeaderboard();
+      enterMainMenuFlow();
+      repairUiState();
+    }
   } else {
-    hideCenterHud();
-    applyArenaTheme();
-    updateUI();
-    refreshLeaderboard();
-    showAuthScreen("login");
+    refreshAuthTokenFromStorage();
+    if (authToken) {
+      hideNicknameScreen();
+      enterMainMenuFlow();
+      repairUiState();
+      const saveResult = await loadSave();
+      if (authToken && !saveResult?.sessionExpired) {
+        await refreshAccountAccess();
+        applyArenaTheme();
+        updateUI();
+        updateAchievementsUI();
+        updateMonthlyAchievementHUD();
+        refreshLeaderboard();
+        enterMainMenuFlow();
+        repairUiState();
+      }
+    } else {
+      hideCenterHud();
+      applyArenaTheme();
+      updateUI();
+      refreshLeaderboard();
+      showAuthScreen("login");
+    }
   }
-
-  window.gameUiReady = true;
-  setInterval(repairUiState, 2000);
+  } finally {
+    window.gameUiReady = true;
+    repairUiState();
+    syncAuthSidePanels();
+    if (!window.__repairUiInterval) {
+      window.__repairUiInterval = setInterval(repairUiState, 2000);
+    }
+  }
 }
 
 
