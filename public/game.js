@@ -1268,7 +1268,7 @@ let bullets = [];
 
 let playerBombs = [];
 let explosionEffects = [];
-let bombCharges = BOMB_MAX_CHARGES;
+let bombCharges = 2;
 let bombReadyAt = 0;
 
 let muzzleTracers = [];
