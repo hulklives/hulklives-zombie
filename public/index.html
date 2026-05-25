@@ -420,6 +420,42 @@ box-shadow:var(--shadow-frame);
 background:#041008;
 }
 
+.bomb-attack-hud{
+position:absolute;
+left:14px;
+bottom:14px;
+z-index:12;
+display:flex;
+align-items:center;
+gap:10px;
+padding:10px 14px;
+border-radius:12px;
+background:rgba(4,16,8,0.82);
+border:1px solid rgba(255,136,68,0.35);
+box-shadow:0 8px 24px rgba(0,0,0,0.35);
+pointer-events:none;
+}
+
+.bomb-attack-key{
+font-size:13px;
+font-weight:700;
+letter-spacing:0.04em;
+color:#ffb884;
+text-transform:uppercase;
+}
+
+.bomb-attack-status{
+min-width:34px;
+padding:4px 8px;
+border-radius:999px;
+background:rgba(255,136,68,0.16);
+border:1px solid rgba(255,136,68,0.28);
+color:#ffd9bf;
+font-size:12px;
+font-weight:700;
+text-align:center;
+}
+
 canvas{
 display:block;
 background:#001a00;
@@ -3715,10 +3751,6 @@ color:#ccc;
 <span class="stat-meta"><span id="player-xp">0</span> / <span id="player-xp-needed">92</span> XP</span>
 </div>
 <div class="stat-card wide">
-<span class="stat-label">Bomb</span>
-<strong class="stat-value stat-weapon" id="bomb-cooldown-hud">R · Bomb</strong>
-</div>
-<div class="stat-card wide">
 <span class="stat-label">Weapon</span>
 <strong class="stat-value stat-weapon" id="weapon-hud">Pistol</strong>
 </div>
@@ -3737,6 +3769,10 @@ TikTok @hulklives
 
 <div id="game-canvas-frame">
 <canvas id="c" width="1280" height="800"></canvas>
+<div id="bomb-attack-hud" class="bomb-attack-hud" hidden>
+<span class="bomb-attack-key">R = BOMB</span>
+<span class="bomb-attack-status" id="bomb-attack-status">x2</span>
+</div>
 <div id="bonus-offer">
 <h3>🎁 Bonus Chance!</h3>
 <p>50% chance for 20 skill points</p>

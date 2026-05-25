@@ -1268,6 +1268,7 @@ let bullets = [];
 
 let playerBombs = [];
 let explosionEffects = [];
+let bombCharges = BOMB_MAX_CHARGES;
 let bombReadyAt = 0;
 
 let muzzleTracers = [];
@@ -1302,9 +1303,10 @@ const NEXT_WAVE_DELAY_MS = 2500;
 
 const SHOOT_COOLDOWN = 12;
 const BOMB_COOLDOWN_MS = 30000;
+const BOMB_MAX_CHARGES = 2;
 const BOMB_THROW_SPEED = 8.5;
-const BOMB_BLAST_RADIUS = 132;
-const BOMB_DAMAGE_MULT = 3.2;
+const BOMB_BLAST_RADIUS = 148;
+const BOMB_DAMAGE_MULT = 5;
 const BOMB_MAX_FLIGHT_MS = 1200;
 const BOMB_MAX_RANGE = 420;
 
@@ -2280,6 +2282,7 @@ function resetSessionState() {
   bullets = [];
   playerBombs = [];
   explosionEffects = [];
+  bombCharges = BOMB_MAX_CHARGES;
   bombReadyAt = 0;
   hpPickups = [];
   lastHpPickupSpawnAt = 0;
@@ -2396,8 +2399,8 @@ const TUTORIAL_STEPS = [
   {
     icon: "🎯",
     title: "Aim & shoot",
-    body: "The mouse aims automatically. Hold left click or click to shoot zombies. Press R to throw a bomb every 30 seconds.",
-    keys: ["🖱️ Aim", "🔫 Shoot", "R Bomb"]
+    body: "The mouse aims automatically. Hold left click or click to shoot zombies. Press R twice for two bombs, then wait 30 seconds.",
+    keys: ["🖱️ Aim", "🔫 Shoot", "R Bomb x2"]
   },
   {
     icon: "🌊",
@@ -5804,16 +5807,19 @@ function updateUI() {
     weaponHud.textContent = `${weapon.name} · Lv ${getWeaponLevel(weapon.id)} · ${getWeaponPower(weapon.id)} dmg`;
   }
 
-  const bombHud = document.getElementById("bomb-cooldown-hud");
-  if (bombHud) {
+  const bombAttackHud = document.getElementById("bomb-attack-hud");
+  const bombAttackStatus = document.getElementById("bomb-attack-status");
+  if (bombAttackHud) {
+    bombAttackHud.hidden = !gameRunning || isGameOverVisible();
+  }
+  if (bombAttackStatus) {
+    syncBombCharges();
     if (!gameRunning || isGameOverVisible()) {
-      bombHud.textContent = "R · Bomb";
-    } else if (getBombCooldownRemainingMs() <= 0 && playerBombs.length === 0) {
-      bombHud.textContent = "R · Bomb ready";
-    } else if (playerBombs.length > 0) {
-      bombHud.textContent = "R · Bomb airborne";
+      bombAttackStatus.textContent = `x${BOMB_MAX_CHARGES}`;
+    } else if (bombCharges > 0) {
+      bombAttackStatus.textContent = `x${bombCharges}`;
     } else {
-      bombHud.textContent = `R · ${Math.ceil(getBombCooldownRemainingMs() / 1000)}s`;
+      bombAttackStatus.textContent = `${Math.ceil(getBombCooldownRemainingMs() / 1000)}s`;
     }
   }
 
@@ -5927,6 +5933,7 @@ async function beginRun(mode = "campaign") {
   bullets = [];
   playerBombs = [];
   explosionEffects = [];
+  bombCharges = BOMB_MAX_CHARGES;
   bombReadyAt = 0;
 
   muzzleTracers = [];
@@ -6066,6 +6073,7 @@ function returnToMainMenu() {
   bullets = [];
   playerBombs = [];
   explosionEffects = [];
+  bombCharges = BOMB_MAX_CHARGES;
   bombReadyAt = 0;
   muzzleTracers = [];
   bulletAfterglows = [];
@@ -6169,14 +6177,23 @@ function finalizeGameOver() {
 
 
 
+function syncBombCharges() {
+  if (bombCharges >= BOMB_MAX_CHARGES) return;
+  if (Date.now() >= bombReadyAt) {
+    bombCharges = BOMB_MAX_CHARGES;
+    bombReadyAt = 0;
+  }
+}
+
 function canThrowBomb() {
   if (!canPlayerShoot()) return false;
-  if (Date.now() < bombReadyAt) return false;
-  if (playerBombs.length > 0) return false;
-  return true;
+  syncBombCharges();
+  return bombCharges > 0;
 }
 
 function getBombCooldownRemainingMs() {
+  syncBombCharges();
+  if (bombCharges > 0) return 0;
   return Math.max(0, bombReadyAt - Date.now());
 }
 
@@ -6217,10 +6234,14 @@ function throwBomb() {
     spawnedAt: Date.now()
   });
 
-  bombReadyAt = Date.now() + BOMB_COOLDOWN_MS;
+  bombCharges -= 1;
+  if (bombCharges <= 0) {
+    bombReadyAt = Date.now() + BOMB_COOLDOWN_MS;
+  }
+
   player.muzzleFlash = Math.max(player.muzzleFlash || 0, 5);
   player.weaponRecoil = Math.min(0.2, (player.weaponRecoil || 0) + 0.12);
-  showMilestone("💣 Bomb thrown!");
+  updateUI();
   return true;
 }
 
