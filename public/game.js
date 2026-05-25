@@ -2490,6 +2490,7 @@ function showStartMenu() {
   ensureRenderLoop();
   updateStartMenuUI();
   updateShopControls();
+  syncAuthSidePanels();
 }
 
 function hideStartMenu() {

@@ -890,39 +890,46 @@ padding:2px 6px;
 }
 
 #online-players-panel{
-flex:0 0 auto;
-max-height:180px;
 display:flex;
 flex-direction:column;
 overflow:hidden;
-background:rgba(2,12,6,0.42);
-border:1px solid var(--panel-border);
-box-shadow:0 4px 18px rgba(0,0,0,0.18);
-backdrop-filter:blur(6px);
--webkit-backdrop-filter:blur(6px);
-padding:9px 10px 10px;
-border-radius:12px;
+background:rgba(2,12,6,0.55);
+border:1px solid rgba(61,255,168,0.22);
+box-shadow:
+0 12px 40px rgba(0,0,0,0.28),
+inset 0 0 0 1px rgba(255,255,255,0.04);
+backdrop-filter:blur(8px);
+-webkit-backdrop-filter:blur(8px);
+padding:16px 16px 14px;
+border-radius:16px;
 color:var(--text-soft);
 }
 
+#start-menu #online-players-panel{
+position:sticky;
+top:clamp(24px, 4vh, 40px);
+min-height:280px;
+max-height:min(520px, calc(100vh - 80px));
+}
+
 #online-players-panel .panel-header{
-margin-bottom:6px;
-padding-bottom:5px;
-border-bottom:1px solid rgba(255,255,255,0.06);
+margin-bottom:10px;
+padding-bottom:8px;
+border-bottom:1px solid rgba(61,255,168,0.12);
 }
 
 #online-players-panel .panel-eyebrow{
-font-size:9px;
-margin-bottom:2px;
+font-size:10px;
+margin-bottom:4px;
 }
 
 #online-players-panel .panel-title{
 margin:0;
-font-size:12px;
-font-weight:700;
-letter-spacing:0.08em;
+font-size:13px;
+font-weight:800;
+letter-spacing:0.1em;
 text-transform:uppercase;
-color:rgba(255,255,255,0.82);
+color:#d8ffe8;
 }
 
 #online-players-count{
@@ -943,13 +950,13 @@ vertical-align:middle;
 
 .online-players-list{
 flex:1 1 auto;
-min-height:72px;
-max-height:120px;
+min-height:120px;
+max-height:none;
 overflow-y:auto;
 display:flex;
 flex-direction:column;
-gap:6px;
-padding-right:2px;
+gap:8px;
+padding-right:4px;
 }
 
 .online-players-empty{
@@ -2204,11 +2211,35 @@ pointer-events:none;
 }
 
 .start-menu-content{
-width:min(920px, 100%);
+width:100%;
+min-width:0;
+}
+
+.start-menu-layout{
+display:grid;
+grid-template-columns:minmax(0, 1fr) minmax(260px, 300px);
+gap:clamp(20px, 3vw, 36px);
+width:min(1080px, 100%);
 margin:0 auto;
+align-items:start;
+}
+
+@media (max-width: 920px){
+.start-menu-layout{
+grid-template-columns:1fr;
+}
+
+#start-menu #online-players-panel{
+position:relative;
+top:auto;
+min-height:220px;
+max-height:260px;
+order:-1;
+}
 }
 
 .start-menu-inner > *,
+.start-menu-layout > *,
 .start-menu-content > *{
 position:relative;
 z-index:1;
@@ -4164,16 +4195,6 @@ TikTok @hulklives
 </div>
 </div>
 
-<div id="online-players-panel" class="side-panel online-players-panel logged-out">
-<div class="panel-header">
-<p class="panel-eyebrow">Players</p>
-<h2 class="panel-title">Online now <span id="online-players-count">0</span></h2>
-</div>
-<div id="online-players-list" class="online-players-list" aria-live="polite">
-<div class="online-players-empty">Log in to see who is online.</div>
-</div>
-</div>
-
 <div id="global-chat" class="side-panel global-chat-panel logged-out">
 <div class="panel-header">
 <p class="panel-eyebrow">Community</p>
@@ -4239,6 +4260,7 @@ TikTok @hulklives
 </div>
 <div class="start-menu-panel overlay-card">
 <div class="start-menu-inner">
+<div class="start-menu-layout">
 <div class="start-menu-content">
 <div id="start-menu-announcement" class="start-menu-announcement" hidden aria-live="polite">
 <span class="start-menu-announcement-icon">📣</span>
@@ -4267,6 +4289,16 @@ TikTok @hulklives
 </div>
 <p class="menu-hint start-menu-hint">Buy upgrades in the shop before you start — or jump straight into the zombies.</p>
 <button type="button" class="menu-secondary-btn danger start-menu-logout" onclick="logoutAccount()">Log out</button>
+</div>
+<aside id="online-players-panel" class="online-players-panel logged-out" aria-label="Players online">
+<div class="panel-header">
+<p class="panel-eyebrow">Players</p>
+<h2 class="panel-title">Online now <span id="online-players-count">0</span></h2>
+</div>
+<div id="online-players-list" class="online-players-list" aria-live="polite">
+<div class="online-players-empty">Log in to see who is online.</div>
+</div>
+</aside>
 </div>
 </div>
 </div>
@@ -4532,9 +4564,9 @@ TikTok @hulklives
 </div>
 
 <script src="game-pro.js?v=3"></script>
-<script src="game.js?v=183"></script>
+<script src="game.js?v=184"></script>
 <script src="chat.js?v=2"></script>
-<script src="online.js?v=6"></script>
+<script src="online.js?v=7"></script>
 <script src="admin-panel.js?v=15"></script>
 
 </body>
