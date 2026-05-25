@@ -2141,6 +2141,7 @@ function handleSessionExpired(message = "Session expired. Log in again.") {
   closeShopUpgradeMenu();
   closeSettingsMenu();
   closeAchievementsMenu();
+  if (typeof closeFriendsMenu === "function") closeFriendsMenu();
   closeFeedbackMenu();
   closeFeedbackInboxMenu();
   closeRunModifierPick();
@@ -2380,6 +2381,7 @@ async function logoutAccount() {
   hideStartMenu();
   hideTutorialOverlay();
   hideCenterHud();
+  if (typeof closeFriendsMenu === "function") closeFriendsMenu();
   showAuthScreen("login");
   setAuthError("");
   updateUI();
@@ -2427,6 +2429,7 @@ const START_MENU_MODAL_IDS = [
   "shop-main-modal",
   "shop-upgrade-modal",
   "achievements-modal",
+  "friends-modal",
   "settings-modal",
   "feedback-modal",
   "feedback-inbox-modal",
@@ -7635,6 +7638,15 @@ async function init() {
   if (achievementsModal) {
     achievementsModal.addEventListener("click", (event) => {
       if (event.target === achievementsModal) closeAchievementsMenu();
+    });
+  }
+
+  const friendsModal = document.getElementById("friends-modal");
+  if (friendsModal) {
+    friendsModal.addEventListener("click", (event) => {
+      if (event.target === friendsModal && typeof closeFriendsMenu === "function") {
+        closeFriendsMenu();
+      }
     });
   }
 

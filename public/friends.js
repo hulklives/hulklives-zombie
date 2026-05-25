@@ -28,11 +28,24 @@ function hasFriendsAuth() {
   return Boolean(localStorage.getItem(FRIENDS_AUTH_TOKEN_KEY));
 }
 
-function isFriendsPanelVisible() {
-  if (typeof isStartMenuVisible === "function") return isStartMenuVisible();
-  const panel = document.getElementById("friends-panel");
-  if (!panel) return false;
-  return window.getComputedStyle(panel).display !== "none";
+function isFriendsModalOpen() {
+  const modal = document.getElementById("friends-modal");
+  return Boolean(modal?.classList.contains("open"));
+}
+
+function shouldSyncFriends() {
+  if (!hasFriendsAuth()) return false;
+  if (isFriendsModalOpen()) return true;
+  if (typeof isStartMenuVisible === "function" && isStartMenuVisible()) return true;
+  return false;
+}
+
+function updateFriendsMenuBadge(incomingCount) {
+  const badge = document.getElementById("friends-menu-badge");
+  if (!badge) return;
+  const count = Number(incomingCount) || 0;
+  badge.textContent = String(count);
+  badge.hidden = count <= 0;
 }
 
 function setFriendsPanelStatus(message, isError = false) {
@@ -63,6 +76,7 @@ function setFriendsPanelLoggedOut() {
   }
   if (button) button.disabled = true;
   if (form) form.hidden = false;
+  updateFriendsMenuBadge(0);
   setFriendsPanelStatus("");
 }
 
@@ -149,10 +163,12 @@ function renderFriendsPanel(payload) {
   requests.innerHTML = requestBlocks.length
     ? `<div class="friends-requests-title">Requests</div>${requestBlocks.join("")}`
     : "";
+
+  updateFriendsMenuBadge(incoming.length);
 }
 
 async function refreshFriendsPanel(force = false) {
-  if (!isFriendsPanelVisible()) return;
+  if (!shouldSyncFriends()) return;
 
   const fetchAuth = getFriendsAuthFetch();
   if (!fetchAuth) {
@@ -247,9 +263,32 @@ function removeFriendAccount(username) {
 function startFriendsPolling() {
   if (friendsPollTimer) clearInterval(friendsPollTimer);
   friendsPollTimer = setInterval(() => {
-    if (isFriendsPanelVisible()) refreshFriendsPanel(false);
+    if (shouldSyncFriends()) refreshFriendsPanel(false);
   }, FRIENDS_POLL_MS);
   refreshFriendsPanel(true);
+}
+
+function openFriendsMenu() {
+  const modal = document.getElementById("friends-modal");
+  if (!modal) return;
+  if (typeof isStartMenuVisible === "function" && isStartMenuVisible()) {
+    if (typeof hideStartMenu === "function") hideStartMenu();
+  }
+  modal.classList.add("open");
+  modal.setAttribute("aria-hidden", "false");
+  refreshFriendsPanel(true);
+}
+
+function closeFriendsMenu() {
+  const modal = document.getElementById("friends-modal");
+  const wasOpen = modal?.classList.contains("open");
+  if (modal) {
+    modal.classList.remove("open");
+    modal.setAttribute("aria-hidden", "true");
+  }
+  if (wasOpen && typeof restoreStartMenuAfterModal === "function") {
+    restoreStartMenuAfterModal();
+  }
 }
 
 function initFriendsPanel() {
@@ -294,6 +333,8 @@ function initFriendsPanel() {
 }
 
 window.refreshFriendsPanel = (force = true) => refreshFriendsPanel(force);
+window.openFriendsMenu = openFriendsMenu;
+window.closeFriendsMenu = closeFriendsMenu;
 window.submitFriendRequest = submitFriendRequest;
 window.acceptFriendRequest = acceptFriendRequest;
 window.declineFriendRequest = declineFriendRequest;
