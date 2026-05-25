@@ -90,7 +90,14 @@ function normalizeAdminConfig(raw) {
     bannedIps: [...new Set(bannedIps.map(normalizeIp).filter(Boolean))],
     defaultLeaderboardRole:
       sanitizeText(source.defaultLeaderboardRole, 24) || DEFAULT_ADMIN_CONFIG.defaultLeaderboardRole,
-    leaderboardRoles: normalizeLeaderboardRoles(source.leaderboardRoles)
+    leaderboardRoles: normalizeLeaderboardRoles(source.leaderboardRoles),
+    appliedSkillPointGrants: [
+      ...new Set(
+        (Array.isArray(source.appliedSkillPointGrants) ? source.appliedSkillPointGrants : [])
+          .map((entry) => String(entry || "").trim().slice(0, 64))
+          .filter(Boolean)
+      )
+    ]
   };
 }
 
@@ -206,20 +213,28 @@ function getAdminConfigSnapshot() {
     bannedIps: [...adminConfig.bannedIps],
     defaultLeaderboardRole: getDefaultLeaderboardRole(),
     leaderboardRoles: { ...adminConfig.leaderboardRoles },
-    appliedSkillPointGrants: [...adminConfig.appliedSkillPointGrants],
+    appliedSkillPointGrants: [...getAppliedSkillPointGrants()],
     reservedBlockedUsernames: [...DEFAULT_BLOCKED_USERNAMES]
   };
+}
+
+function getAppliedSkillPointGrants() {
+  return Array.isArray(adminConfig.appliedSkillPointGrants) ? adminConfig.appliedSkillPointGrants : [];
 }
 
 function hasAppliedSkillPointGrant(grantId) {
   const id = String(grantId || "").trim().slice(0, 64);
   if (!id) return false;
-  return adminConfig.appliedSkillPointGrants.includes(id);
+  return getAppliedSkillPointGrants().includes(id);
 }
 
 function markSkillPointGrantApplied(grantId) {
   const id = String(grantId || "").trim().slice(0, 64);
-  if (!id || adminConfig.appliedSkillPointGrants.includes(id)) return false;
+  if (!id) return false;
+  if (!Array.isArray(adminConfig.appliedSkillPointGrants)) {
+    adminConfig.appliedSkillPointGrants = [];
+  }
+  if (adminConfig.appliedSkillPointGrants.includes(id)) return false;
   adminConfig.appliedSkillPointGrants.push(id);
   saveAdminConfig();
   return true;
