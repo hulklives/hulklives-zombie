@@ -1266,6 +1266,10 @@ let zombies = [];
 
 let bullets = [];
 
+let playerBombs = [];
+let explosionEffects = [];
+let bombReadyAt = 0;
+
 let muzzleTracers = [];
 
 let bulletAfterglows = [];
@@ -1297,6 +1301,12 @@ let pauseReason = null;
 const NEXT_WAVE_DELAY_MS = 2500;
 
 const SHOOT_COOLDOWN = 12;
+const BOMB_COOLDOWN_MS = 30000;
+const BOMB_THROW_SPEED = 8.5;
+const BOMB_BLAST_RADIUS = 132;
+const BOMB_DAMAGE_MULT = 3.2;
+const BOMB_MAX_FLIGHT_MS = 1200;
+const BOMB_MAX_RANGE = 420;
 
 let gameRunning = false;
 let gameMode = "campaign";
@@ -2268,6 +2278,9 @@ function resetSessionState() {
   weaponLevels = { pistol: 0, smg: 0, shotgun: 0, rifle: 0 };
   zombies = [];
   bullets = [];
+  playerBombs = [];
+  explosionEffects = [];
+  bombReadyAt = 0;
   hpPickups = [];
   lastHpPickupSpawnAt = 0;
   playerBaseSpeed = 4;
@@ -2383,8 +2396,8 @@ const TUTORIAL_STEPS = [
   {
     icon: "🎯",
     title: "Aim & shoot",
-    body: "The mouse aims automatically. Hold left click or click to shoot zombies.",
-    keys: ["🖱️ Aim", "🔫 Shoot"]
+    body: "The mouse aims automatically. Hold left click or click to shoot zombies. Press R to throw a bomb every 30 seconds.",
+    keys: ["🖱️ Aim", "🔫 Shoot", "R Bomb"]
   },
   {
     icon: "🌊",
@@ -5791,6 +5804,19 @@ function updateUI() {
     weaponHud.textContent = `${weapon.name} · Lv ${getWeaponLevel(weapon.id)} · ${getWeaponPower(weapon.id)} dmg`;
   }
 
+  const bombHud = document.getElementById("bomb-cooldown-hud");
+  if (bombHud) {
+    if (!gameRunning || isGameOverVisible()) {
+      bombHud.textContent = "R · Bomb";
+    } else if (getBombCooldownRemainingMs() <= 0 && playerBombs.length === 0) {
+      bombHud.textContent = "R · Bomb ready";
+    } else if (playerBombs.length > 0) {
+      bombHud.textContent = "R · Bomb airborne";
+    } else {
+      bombHud.textContent = `R · ${Math.ceil(getBombCooldownRemainingMs() / 1000)}s`;
+    }
+  }
+
   if (skillPointsDisplay) skillPointsDisplay.innerText = player.skillPoints;
 
   const skillPointsHud = document.getElementById("skill-points-hud");
@@ -5899,6 +5925,9 @@ async function beginRun(mode = "campaign") {
   player.score = player.kills * 10;
 
   bullets = [];
+  playerBombs = [];
+  explosionEffects = [];
+  bombReadyAt = 0;
 
   muzzleTracers = [];
   bulletAfterglows = [];
@@ -6035,6 +6064,9 @@ function returnToMainMenu() {
   lastAnnouncedEventId = null;
   zombies = [];
   bullets = [];
+  playerBombs = [];
+  explosionEffects = [];
+  bombReadyAt = 0;
   muzzleTracers = [];
   bulletAfterglows = [];
   bloodEffects = [];
@@ -6136,6 +6168,172 @@ function finalizeGameOver() {
 }
 
 
+
+function canThrowBomb() {
+  if (!canPlayerShoot()) return false;
+  if (Date.now() < bombReadyAt) return false;
+  if (playerBombs.length > 0) return false;
+  return true;
+}
+
+function getBombCooldownRemainingMs() {
+  return Math.max(0, bombReadyAt - Date.now());
+}
+
+function throwBomb() {
+  if (!canThrowBomb()) return false;
+
+  const cx = player.x + PLAYER_SIZE / 2;
+  const cy = player.y + PLAYER_SIZE / 2;
+  let targetX = mouseTarget.x;
+  let targetY = mouseTarget.y;
+  let dx = targetX - cx;
+  let dy = targetY - cy;
+  let dist = Math.hypot(dx, dy);
+
+  if (dist < 48) {
+    const angle = player.facingAngle || 0;
+    targetX = cx + Math.cos(angle) * 180;
+    targetY = cy + Math.sin(angle) * 180;
+    dx = targetX - cx;
+    dy = targetY - cy;
+    dist = Math.hypot(dx, dy);
+  }
+
+  if (dist < 1) return false;
+
+  const travelDist = Math.min(dist, BOMB_MAX_RANGE);
+  const ndx = dx / dist;
+  const ndy = dy / dist;
+
+  playerBombs.push({
+    x: cx,
+    y: cy,
+    dx: ndx,
+    dy: ndy,
+    speed: BOMB_THROW_SPEED,
+    targetX: cx + ndx * travelDist,
+    targetY: cy + ndy * travelDist,
+    spawnedAt: Date.now()
+  });
+
+  bombReadyAt = Date.now() + BOMB_COOLDOWN_MS;
+  player.muzzleFlash = Math.max(player.muzzleFlash || 0, 5);
+  player.weaponRecoil = Math.min(0.2, (player.weaponRecoil || 0) + 0.12);
+  showMilestone("💣 Bomb thrown!");
+  return true;
+}
+
+function pushExplosionEffect(x, y, radius, color = "#ff8844") {
+  explosionEffects.push({
+    x,
+    y,
+    radius,
+    color,
+    life: 22,
+    maxLife: 22
+  });
+  if (explosionEffects.length > 24) {
+    explosionEffects.splice(0, explosionEffects.length - 24);
+  }
+}
+
+function detonatePlayerBomb(bomb) {
+  const cx = bomb.x;
+  const cy = bomb.y;
+  const radius = BOMB_BLAST_RADIUS;
+
+  addScreenShake(5.5);
+  if (typeof playExplosionSound === "function") playExplosionSound();
+  pushExplosionEffect(cx, cy, radius * 0.45, "#fff2cc");
+  pushExplosionEffect(cx, cy, radius, "#ff8844");
+  spawnFloatingText(cx, cy - 18, "BOOM", "#ff8844", 1.15);
+
+  const baseDamage = Math.round(getEffectivePlayerDamage() * BOMB_DAMAGE_MULT * getRunDamageMult());
+
+  for (let i = zombies.length - 1; i >= 0; i--) {
+    const z = zombies[i];
+    const zcx = z.x + z.size / 2;
+    const zcy = z.y + z.size / 2;
+    const hitRadius = radius + z.size * 0.35;
+    const dist = Math.hypot(cx - zcx, cy - zcy);
+    if (dist > hitRadius) continue;
+
+    const falloff = 1 - Math.min(1, dist / hitRadius) * 0.38;
+    damageZombie(
+      z,
+      i,
+      { angle: Math.atan2(zcy - cy, zcx - cx) },
+      Math.max(1, Math.round(baseDamage * falloff))
+    );
+  }
+}
+
+function updatePlayerBombs() {
+  for (let i = playerBombs.length - 1; i >= 0; i--) {
+    const bomb = playerBombs[i];
+    bomb.x += bomb.dx * bomb.speed;
+    bomb.y += bomb.dy * bomb.speed;
+
+    const reachedTarget = Math.hypot(bomb.x - bomb.targetX, bomb.y - bomb.targetY) <= bomb.speed + 6;
+    const timedOut = Date.now() - bomb.spawnedAt >= BOMB_MAX_FLIGHT_MS;
+
+    if (reachedTarget || timedOut) {
+      detonatePlayerBomb(bomb);
+      playerBombs.splice(i, 1);
+    }
+  }
+}
+
+function updateExplosionEffects() {
+  for (let i = explosionEffects.length - 1; i >= 0; i--) {
+    explosionEffects[i].life -= 1;
+    if (explosionEffects[i].life <= 0) {
+      explosionEffects.splice(i, 1);
+    }
+  }
+}
+
+function drawPlayerBombs() {
+  playerBombs.forEach((bomb) => {
+    ctx.save();
+    ctx.fillStyle = "#2f2418";
+    ctx.beginPath();
+    ctx.arc(bomb.x, bomb.y, 9, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#ff8844";
+    ctx.beginPath();
+    ctx.arc(bomb.x - 2, bomb.y - 1, 7, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#ffd166";
+    ctx.beginPath();
+    ctx.arc(bomb.x + 4, bomb.y - 5, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  });
+}
+
+function drawExplosionEffects() {
+  explosionEffects.forEach((fx) => {
+    const alpha = fx.life / fx.maxLife;
+    const pulse = 1 + (1 - alpha) * 0.35;
+    const radius = fx.radius * pulse;
+
+    ctx.save();
+    ctx.globalAlpha = alpha * 0.75;
+    const grad = ctx.createRadialGradient(fx.x, fx.y, 0, fx.x, fx.y, radius);
+    grad.addColorStop(0, colorWithAlpha("#ffffff", 0.95));
+    grad.addColorStop(0.35, colorWithAlpha(fx.color, 0.72));
+    grad.addColorStop(1, colorWithAlpha(fx.color, 0));
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(fx.x, fx.y, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  });
+}
 
 function fireWeapon(targetX, targetY) {
   if (!canPlayerShoot()) return;
@@ -6369,6 +6567,7 @@ function update() {
   updatePlayerRewardEffects();
   updateMuzzleTracers();
   updateBulletAfterglows();
+  updateExplosionEffects();
   updateHpPickups();
   updateZombieProjectiles();
 
@@ -6431,6 +6630,8 @@ function update() {
     player.shootCooldown = getShootCooldown();
 
   }
+
+  updatePlayerBombs();
 
 
 
@@ -6686,9 +6887,13 @@ function draw() {
 
   drawBloodEffects();
 
+  drawExplosionEffects();
+
   drawHpPickups();
 
   drawPlayer(theme);
+
+  drawPlayerBombs();
 
   drawFloatingTexts();
   drawZombieProjectiles();
@@ -6933,6 +7138,10 @@ window.addEventListener("keydown", (e) => {
 
   if (["1", "2", "3", "4"].includes(e.key)) {
     handleWeaponHotkey(e.key);
+  }
+
+  if (e.key.toLowerCase() === "r" && !e.repeat) {
+    throwBomb();
   }
 
 });
