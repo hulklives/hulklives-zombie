@@ -4831,17 +4831,81 @@ function getWaveBossStats() {
   return { hp, size, speed, damage, hits };
 }
 
+function isSafeBossSpawn(x, y, size, padding = 56) {
+  return (
+    player.x - padding >= x + size ||
+    player.x + PLAYER_SIZE + padding <= x ||
+    player.y - padding >= y + size ||
+    player.y + PLAYER_SIZE + padding <= y
+  );
+}
+
+function getBossSpawnMinCenterDist(size) {
+  return Math.max(360, (PLAYER_SIZE + size) * 0.55 + 140);
+}
+
+function getBossSpawnPoint(size) {
+  const margin = 40;
+  const pcx = player.x + PLAYER_SIZE / 2;
+  const pcy = player.y + PLAYER_SIZE / 2;
+  const minDist = getBossSpawnMinCenterDist(size);
+
+  for (let attempt = 0; attempt < 14; attempt++) {
+    const edge = Math.floor(Math.random() * 4);
+    let x;
+    let y;
+
+    if (edge === 0) {
+      x = Math.random() * (WORLD_WIDTH - size);
+      y = margin;
+    } else if (edge === 1) {
+      x = WORLD_WIDTH - size - margin;
+      y = Math.random() * (WORLD_HEIGHT - size);
+    } else if (edge === 2) {
+      x = Math.random() * (WORLD_WIDTH - size);
+      y = WORLD_HEIGHT - size - margin;
+    } else {
+      x = margin;
+      y = Math.random() * (WORLD_HEIGHT - size);
+    }
+
+    x = clamp(x, margin, WORLD_WIDTH - size - margin);
+    y = clamp(y, margin, WORLD_HEIGHT - size - margin);
+
+    const dist = Math.hypot(pcx - (x + size / 2), pcy - (y + size / 2));
+    if (dist >= minDist && isSafeBossSpawn(x, y, size)) return { x, y };
+  }
+
+  const angle = Math.random() * Math.PI * 2;
+  let x = pcx - size / 2 + Math.cos(angle) * minDist;
+  let y = pcy - size / 2 + Math.sin(angle) * minDist;
+  x = clamp(x, margin, WORLD_WIDTH - size - margin);
+  y = clamp(y, margin, WORLD_HEIGHT - size - margin);
+
+  if (!isSafeBossSpawn(x, y, size)) {
+    let dx = x + size / 2 - pcx;
+    let dy = y + size / 2 - pcy;
+    const d = Math.hypot(dx, dy);
+    if (d < 1) {
+      dx = Math.cos(angle);
+      dy = Math.sin(angle);
+    } else {
+      dx /= d;
+      dy /= d;
+    }
+    x = clamp(pcx - size / 2 + dx * minDist, margin, WORLD_WIDTH - size - margin);
+    y = clamp(pcy - size / 2 + dy * minDist, margin, WORLD_HEIGHT - size - margin);
+  }
+
+  return { x, y };
+}
+
 function spawnWaveBoss() {
   const stats = getWaveBossStats();
   const size = stats.size;
   const playerCenterX = player.x + PLAYER_SIZE / 2;
   const playerCenterY = player.y + PLAYER_SIZE / 2;
-  const spawnX = clamp(
-    playerCenterX - size / 2 + (Math.random() - 0.5) * 120,
-    40,
-    WORLD_WIDTH - size - 40
-  );
-  const spawnY = clamp(playerCenterY - size - 140, 40, WORLD_HEIGHT - size - 40);
+  const { x: spawnX, y: spawnY } = getBossSpawnPoint(size);
   const toPlayerX = playerCenterX - (spawnX + size / 2);
   const toPlayerY = playerCenterY - (spawnY + size / 2);
 
@@ -4857,7 +4921,7 @@ function spawnWaveBoss() {
     size: stats.size,
     speed: stats.speed,
     damage: stats.damage,
-    hitCooldown: 0,
+    hitCooldown: 36,
     facingAngle: Math.atan2(toPlayerY, toPlayerX),
     jitter: Math.random() * 0.5 + 0.5
   });
@@ -4979,12 +5043,7 @@ function spawnFreeplayBoss() {
   const stats = getFreeplayBossStats();
   const playerCenterX = player.x + PLAYER_SIZE / 2;
   const playerCenterY = player.y + PLAYER_SIZE / 2;
-  const spawnX = clamp(
-    playerCenterX - stats.size / 2 + (Math.random() - 0.5) * 140,
-    40,
-    WORLD_WIDTH - stats.size - 40
-  );
-  const spawnY = clamp(playerCenterY - stats.size - 120, 40, WORLD_HEIGHT - stats.size - 40);
+  const { x: spawnX, y: spawnY } = getBossSpawnPoint(stats.size);
   const toPlayerX = playerCenterX - (spawnX + stats.size / 2);
   const toPlayerY = playerCenterY - (spawnY + stats.size / 2);
 
@@ -5002,7 +5061,7 @@ function spawnFreeplayBoss() {
     size: stats.size,
     speed: stats.speed,
     damage: stats.damage,
-    hitCooldown: 0,
+    hitCooldown: 36,
     facingAngle: Math.atan2(toPlayerY, toPlayerX),
     jitter: Math.random() * 0.4 + 0.55
   });
