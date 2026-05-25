@@ -48,6 +48,7 @@ const {
   removePresence,
   touchPresence
 } = require("./presence");
+const { attachCoopLobbyWebSocket } = require("./coop-lobby");
 const {
   deleteSession,
   deleteSessionsForUsernameKey,
@@ -305,6 +306,16 @@ function ensureSaveForAccount(displayName) {
   saves[key] = sanitizeSaveShape({});
   saveSaves();
   return { key, data: saves[key] };
+}
+
+function getPlayerLobbyProfile(displayName) {
+  const { data } = getSaveForAccount(displayName);
+  const totalXp = Number(data?.totalXp || 0);
+  return {
+    level: getLevelFromXp(totalXp),
+    kills: Number(data?.kills || 0),
+    bestWave: Number(data?.bestWave || 0)
+  };
 }
 
 function buildLeaderboard(limit) {
@@ -966,10 +977,15 @@ async function startServer() {
   await loadChatStore();
   ensureAdminConfigFile();
 
+  attachCoopLobbyWebSocket(server, {
+    verifySession: require("./auth").verifySession,
+    getPlayerLobbyProfile
+  });
+
   server.listen(port, () => {
     console.log(`OK server running on http://localhost:${port}`);
     console.log(`Persistent storage: ${storage.getStorageMode()}`);
-    console.log("Accounts, save validation, anti-cheat, admin tools and live chat enabled");
+    console.log("Accounts, save validation, anti-cheat, admin tools, live chat and co-op lobby enabled");
   });
 }
 

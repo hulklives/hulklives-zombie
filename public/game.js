@@ -2427,7 +2427,8 @@ const START_MENU_MODAL_IDS = [
   "settings-modal",
   "feedback-modal",
   "feedback-inbox-modal",
-  "run-modifier-modal"
+  "run-modifier-modal",
+  "coop-lobby-modal"
 ];
 
 function isStartMenuSubModalOpen() {
