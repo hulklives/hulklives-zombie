@@ -1,4 +1,3 @@
-const ONLINE_TOKEN_KEY = "hulkLivesAuthToken";
 const ONLINE_HEARTBEAT_MS = 20000;
 const ONLINE_POLL_MS = 12000;
 
@@ -24,7 +23,8 @@ function hasOnlineAuth() {
   if (typeof refreshAuthTokenFromStorage === "function") {
     refreshAuthTokenFromStorage();
   }
-  return Boolean(localStorage.getItem(ONLINE_TOKEN_KEY));
+  if (typeof getGameAuthToken === "function" && getGameAuthToken()) return true;
+  return Boolean(localStorage.getItem("hulkLivesAuthToken"));
 }
 
 function getOnlinePresencePayload() {
@@ -104,6 +104,13 @@ function showOnlinePlayersLoading() {
   list.innerHTML = '<div class="online-players-empty">Loading online players...</div>';
 }
 
+function handleOnlineAuthFailure(status) {
+  if (status === 401 && typeof handleSessionExpired === "function") {
+    handleSessionExpired();
+    return;
+  }
+}
+
 async function sendOnlinePresence() {
   const fetchAuth = getOnlineAuthFetch();
   if (!fetchAuth || !hasOnlineAuth() || onlineReporting) return null;
@@ -116,6 +123,7 @@ async function sendOnlinePresence() {
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
+      handleOnlineAuthFailure(response.status);
       return { ok: false, status: response.status, error: payload.error || "Could not update presence." };
     }
     return { ok: true, players: payload.players || [] };
@@ -146,20 +154,15 @@ async function refreshOnlinePlayers(force = false) {
       renderOnlinePlayers(presenceResult.players || []);
       return;
     }
-    if (presenceResult?.status === 401) {
-      setOnlinePlayersLoggedOut();
-      return;
-    }
+    if (presenceResult?.status === 401) return;
   }
 
   try {
     const response = await fetchAuth("/api/presence/online");
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
-      if (response.status === 401) {
-        setOnlinePlayersLoggedOut();
-        return;
-      }
+      handleOnlineAuthFailure(response.status);
+      if (response.status === 401) return;
       const list = document.getElementById("online-players-list");
       if (list) {
         list.innerHTML = `<div class="online-players-empty">${escapeOnlineHtml(payload.error || "Online list unavailable right now.")}</div>`;

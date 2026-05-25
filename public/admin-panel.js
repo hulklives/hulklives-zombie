@@ -898,7 +898,6 @@ async function openAdminPanel(tab = "announcement") {
   if (!modal) return;
 
   bindAdminPanelEvents();
-  if (typeof hideStartMenu === "function") hideStartMenu();
   document.body.classList.add("admin-open");
   adminPanelOpen = true;
   if (typeof pauseForRunModal === "function") pauseForRunModal("admin");

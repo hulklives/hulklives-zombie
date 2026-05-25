@@ -2227,7 +2227,8 @@ async function completeLogin(username, token) {
   saveAuthToken(token);
   savePlayerName();
   hideNicknameScreen();
-  await loadSave();
+  const saveResult = await loadSave();
+  if (!authToken || saveResult?.sessionExpired) return;
   await refreshAccountAccess();
   applyArenaTheme();
   updateUI();
@@ -2407,6 +2408,7 @@ function repairUiState() {
   refreshAuthTokenFromStorage();
 
   if (!authToken) {
+    hideStartMenu();
     if (!isNicknameScreenVisible()) showAuthScreen("login");
     return;
   }
@@ -2414,15 +2416,12 @@ function repairUiState() {
   if (isNicknameScreenVisible()) hideNicknameScreen();
 
   if (gameRunning || isGameOverVisible() || isTutorialVisible() || adminOpen) {
+    hideStartMenu();
     ensureRenderLoop();
     return;
   }
 
-  if (!isStartMenuVisible()) {
-    showStartMenu();
-  } else {
-    ensureRenderLoop();
-  }
+  showStartMenu();
 }
 
 function updateStartMenuUI() {
@@ -2462,14 +2461,21 @@ function updateStartMenuUI() {
 }
 
 function showStartMenu() {
-  if (startMenuOverlay) startMenuOverlay.style.display = "flex";
+  if (startOverlay) startOverlay.style.display = "none";
+  if (startMenuOverlay) {
+    startMenuOverlay.style.display = "flex";
+    startMenuOverlay.classList.add("open");
+  }
   ensureRenderLoop();
   updateStartMenuUI();
   updateShopControls();
 }
 
 function hideStartMenu() {
-  if (startMenuOverlay) startMenuOverlay.style.display = "none";
+  if (startMenuOverlay) {
+    startMenuOverlay.style.display = "none";
+    startMenuOverlay.classList.remove("open");
+  }
 }
 
 const TUTORIAL_DONE_KEY = "hulkLivesTutorialDone";
@@ -4555,7 +4561,7 @@ async function loadSave() {
         serverData = await response.json();
       } else if (response.status === 401) {
         handleSessionExpired();
-        return;
+        return { ok: false, sessionExpired: true };
       }
     } catch (error) {
       console.warn("Failed to load server save", error);
@@ -4730,7 +4736,12 @@ function syncSaveToServer({ quiet = true } = {}) {
   })
     .then(async (response) => {
       if (response.status === 401) {
-        handleSessionExpired();
+        try {
+          const me = await authFetch("/api/me");
+          if (!me.ok) handleSessionExpired();
+        } catch (error) {
+          handleSessionExpired();
+        }
         return false;
       }
       if (response.status === 403 || response.status === 429) {
@@ -7331,6 +7342,7 @@ window.buyUpgrade = buyUpgrade;
 window.refreshAuthTokenFromStorage = refreshAuthTokenFromStorage;
 window.showAuthScreen = showAuthScreen;
 window.repairUiState = repairUiState;
+window.getGameAuthToken = () => authToken;
 window.hideStartMenu = hideStartMenu;
 
 
@@ -7652,7 +7664,8 @@ async function init() {
 
   if (await tryRestoreSession()) {
     hideNicknameScreen();
-    await loadSave();
+    const saveResult = await loadSave();
+    if (!authToken || saveResult?.sessionExpired) return;
     await refreshAccountAccess();
     applyArenaTheme();
     updateUI();

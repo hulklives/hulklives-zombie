@@ -2023,7 +2023,7 @@ flex-direction:column;
 justify-content:center;
 align-items:center;
 color:#fff;
-z-index:9999;
+z-index:100200;
 text-align:center;
 padding:20px;
 }
@@ -2133,8 +2133,12 @@ radial-gradient(ellipse 90% 55% at 50% 8%, rgba(61,255,168,0.14), transparent 58
 radial-gradient(ellipse 120% 80% at 50% 110%, rgba(0,90,45,0.28), rgba(2,10,6,0.94));
 backdrop-filter:none;
 -webkit-backdrop-filter:none;
-z-index:9999;
+z-index:100050;
 overflow:hidden;
+}
+
+#start-menu.overlay-screen.open{
+display:flex !important;
 }
 
 #start-menu .start-menu-panel.overlay-card{
@@ -3121,7 +3125,13 @@ pointer-events:auto;
 display:flex;
 }
 
-body.admin-open > *:not(#admin-modal){
+body.admin-open #app-center{
+pointer-events:none !important;
+}
+
+body.admin-open #start-menu,
+body.admin-open #nick,
+body.admin-open #tutorial-overlay{
 pointer-events:none !important;
 }
 
@@ -4521,10 +4531,10 @@ TikTok @hulklives
 </div>
 
 <script src="game-pro.js?v=3"></script>
-<script src="game.js?v=179"></script>
+<script src="game.js?v=180"></script>
 <script src="chat.js?v=2"></script>
-<script src="online.js?v=3"></script>
-<script src="admin-panel.js?v=14"></script>
+<script src="online.js?v=4"></script>
+<script src="admin-panel.js?v=15"></script>
 
 </body>
 </html>
