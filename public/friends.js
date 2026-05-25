@@ -33,7 +33,12 @@ function isFriendsModalOpen() {
   return Boolean(modal?.classList.contains("open"));
 }
 
+function isSocialFeaturesEnabled() {
+  return window.SOCIAL_FEATURES_ENABLED === true;
+}
+
 function shouldSyncFriends() {
+  if (!isSocialFeaturesEnabled()) return false;
   if (!hasFriendsAuth()) return false;
   if (isFriendsModalOpen()) return true;
   if (typeof isStartMenuVisible === "function" && isStartMenuVisible()) return true;
@@ -269,6 +274,7 @@ function startFriendsPolling() {
 }
 
 function openFriendsMenu() {
+  if (!isSocialFeaturesEnabled()) return;
   const modal = document.getElementById("friends-modal");
   if (!modal) return;
   if (typeof isStartMenuVisible === "function" && isStartMenuVisible()) {

@@ -741,6 +741,8 @@ const STORAGE_KEY = "hulkLivesSave";
 
 const PLAYER_NAME_KEY = "hulkLivesNickname";
 const AUTH_TOKEN_KEY = "hulkLivesAuthToken";
+const SOCIAL_FEATURES_ENABLED = false;
+window.SOCIAL_FEATURES_ENABLED = SOCIAL_FEATURES_ENABLED;
 const SETTINGS_KEY = "hulkLivesSettings";
 
 const DEFAULT_SETTINGS = {

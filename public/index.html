@@ -3588,10 +3588,43 @@ line-height:1.45;
 }
 
 .menu-mode-btn.disabled-mode,
-.start-menu-freeplay:disabled{
-opacity:0.45;
+.start-menu-freeplay:disabled,
+.side-action-btn.coming-soon-locked{
+opacity:0.52;
 cursor:not-allowed;
-filter:grayscale(0.2);
+pointer-events:none;
+filter:grayscale(0.15);
+}
+
+.menu-soon-pill{
+display:inline-flex;
+align-items:center;
+padding:3px 8px;
+border-radius:999px;
+font-size:9px;
+font-weight:800;
+letter-spacing:0.07em;
+text-transform:uppercase;
+color:#ffe8a8;
+background:rgba(255,200,60,0.12);
+border:1px solid rgba(255,200,60,0.24);
+white-space:nowrap;
+flex:0 0 auto;
+}
+
+.start-menu-mode-grid .menu-mode-btn.start-menu-coop-btn::before{
+content:"👥";
+font-size:18px;
+}
+
+.start-menu-mode-grid .menu-mode-btn.start-menu-coop-btn.disabled-mode{
+gap:10px;
+}
+
+.side-action-btn.coming-soon-locked{
+justify-content:center;
+flex-wrap:wrap;
+gap:4px 6px;
 }
 
 #admin-modal{
@@ -4733,12 +4766,12 @@ TikTok @hulklives
 <div class="start-menu-mode-grid start-menu-mode-grid-trio">
 <button type="button" class="menu-primary-btn start-menu-play" onclick="beginRun('campaign')">Waves Game</button>
 <button type="button" class="menu-mode-btn start-menu-freeplay" onclick="beginRun('freeplay')">Freeplay</button>
-<button type="button" class="menu-mode-btn start-menu-coop-btn" onclick="openCoopLobbyMenu()">Co-op (1–4)</button>
+<button type="button" class="menu-mode-btn start-menu-coop-btn disabled-mode" disabled title="Coming soon">Play with friends <span class="menu-soon-pill">Coming soon</span></button>
 </div>
 <div class="menu-action-grid start-menu-secondary">
 <button type="button" class="side-action-btn" onclick="openShopMenu()"><span class="side-action-icon">🛠</span><span class="side-action-text">Shop</span></button>
 <button type="button" class="side-action-btn" onclick="openAchievementsMenu()"><span class="side-action-icon">🏅</span><span class="side-action-text">Achievements</span></button>
-<button type="button" class="side-action-btn" onclick="openFriendsMenu()"><span class="side-action-icon">👥</span><span class="side-action-text">Friends</span><span class="side-action-badge" id="friends-menu-badge" hidden>0</span></button>
+<button type="button" class="side-action-btn coming-soon-locked disabled-mode" disabled title="Coming soon"><span class="side-action-icon">👥</span><span class="side-action-text">Friends</span><span class="menu-soon-pill">Coming soon</span></button>
 <button type="button" class="side-action-btn" onclick="openSettingsMenu()"><span class="side-action-icon">⚙️</span><span class="side-action-text">Settings</span></button>
 <button type="button" class="side-action-btn" onclick="openFeedbackMenu()"><span class="side-action-icon">💬</span><span class="side-action-text">Report</span></button>
 <button type="button" class="side-action-btn" onclick="openTutorial(true)"><span class="side-action-icon">📖</span><span class="side-action-text">Tutorial</span></button>
@@ -5068,10 +5101,10 @@ TikTok @hulklives
 </div>
 
 <script src="game-pro.js?v=3"></script>
-<script src="game.js?v=197"></script>
+<script src="game.js?v=198"></script>
 <script src="chat.js?v=2"></script>
-<script src="friends.js?v=4"></script>
-<script src="coop-lobby.js?v=2"></script>
+<script src="friends.js?v=5"></script>
+<script src="coop-lobby.js?v=3"></script>
 <script src="admin-panel.js?v=15"></script>
 
 </body>

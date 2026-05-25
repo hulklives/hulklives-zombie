@@ -1,5 +1,9 @@
 const COOP_LOBBY_MAX = 4;
 
+function isSocialFeaturesEnabled() {
+  return window.SOCIAL_FEATURES_ENABLED === true;
+}
+
 let coopSocket = null;
 let coopLobbyOpen = false;
 let coopReady = false;
@@ -59,6 +63,7 @@ function isCoopHost() {
 }
 
 function showCoopInviteModal(invite) {
+  if (!isSocialFeaturesEnabled()) return;
   pendingCoopInvite = invite || null;
   const modal = document.getElementById("coop-invite-modal");
   const copyEl = document.getElementById("coop-invite-copy");
@@ -383,6 +388,10 @@ function connectCoopLobbySocket(force = false) {
 }
 
 function initCoopLobbyConnection() {
+  if (!isSocialFeaturesEnabled()) {
+    disconnectCoopLobbySocket();
+    return;
+  }
   if (!getCoopAuthToken()) {
     disconnectCoopLobbySocket();
     return;
@@ -419,6 +428,7 @@ function disconnectCoopLobbySocket() {
 }
 
 function openCoopLobbyMenu() {
+  if (!isSocialFeaturesEnabled()) return;
   if (!getCoopAuthToken()) {
     if (typeof showMilestone === "function") {
       showMilestone("Log in to play co-op.");
@@ -474,6 +484,7 @@ function createCoopLobbyRoom() {
 }
 
 function inviteFriendToCoop(username) {
+  if (!isSocialFeaturesEnabled()) return;
   const target = String(username || "").trim();
   if (!target) return;
 
