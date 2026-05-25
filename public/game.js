@@ -122,12 +122,12 @@ const WEAPONS = [
     hotkey: "3",
     name: "Shotgun",
     emoji: "💥",
-    desc: "5 pellets in a spread",
-    damageMult: 0.78,
-    speedMult: 0.88,
-    cooldownMult: 1.5,
-    pellets: 5,
-    spread: 0.34,
+    desc: "4 pellets in a spread",
+    damageMult: 0.68,
+    speedMult: 0.86,
+    cooldownMult: 1.75,
+    pellets: 4,
+    spread: 0.38,
     color: "#ff8844",
     unlockCost: 100
   },
@@ -3232,6 +3232,13 @@ function getShootCooldown() {
   );
 }
 
+function canPlayerShoot() {
+  if (!gameRunning || !c || paused || isGameOverVisible()) return false;
+  if (deathSequence?.active) return false;
+  if (typeof shouldSkipGameplayUpdate === "function" && shouldSkipGameplayUpdate()) return false;
+  return true;
+}
+
 function getWeaponLevel(weaponId) {
   return Number(weaponLevels[weaponId] || 0);
 }
@@ -6131,7 +6138,7 @@ function finalizeGameOver() {
 
 
 function fireWeapon(targetX, targetY) {
-  if (!gameRunning || !c) return;
+  if (!canPlayerShoot()) return;
 
   const weapon = getEquippedWeapon();
   const cx = player.x + PLAYER_SIZE / 2;
@@ -6164,8 +6171,7 @@ function fireWeapon(targetX, targetY) {
 }
 
 function shoot(e) {
-
-  if (!gameRunning || !c) return;
+  if (!canPlayerShoot()) return;
 
   const view = clientToView(e.clientX, e.clientY);
 
@@ -6796,6 +6802,7 @@ function setGamePaused(shouldPause, reason = null) {
   if (paused) {
     pauseReason = reason || "manual";
     freezeNextWaveTimer();
+    isMouseDown = false;
   } else {
     pauseReason = null;
     hideShopModal();
@@ -6879,6 +6886,7 @@ if (c) {
 
   c.addEventListener("mousedown", (e) => {
     resumeAudio();
+    if (!canPlayerShoot()) return;
 
     const view = clientToView(e.clientX, e.clientY);
     const world = screenToWorld(view.x, view.y);
@@ -6890,11 +6898,8 @@ if (c) {
     isMouseDown = true;
 
     if (player.shootCooldown <= 0) {
-
       shootAt(mouseTarget.x, mouseTarget.y);
-
-      player.shootCooldown = SHOOT_COOLDOWN;
-
+      player.shootCooldown = getShootCooldown();
     }
 
   });
