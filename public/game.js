@@ -2548,6 +2548,7 @@ function showStartMenu() {
     startMenuOverlay.classList.add("open");
   }
   document.body.classList.add("lobby-open");
+  document.documentElement.classList.add("lobby-open");
   ensureRenderLoop();
   updateStartMenuUI();
   updateShopControls();
@@ -2560,6 +2561,7 @@ function hideStartMenu() {
     startMenuOverlay.classList.remove("open");
   }
   document.body.classList.remove("lobby-open");
+  document.documentElement.classList.remove("lobby-open");
 }
 
 const TUTORIAL_DONE_KEY = "hulkLivesTutorialDone";

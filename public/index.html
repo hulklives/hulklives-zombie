@@ -2218,16 +2218,19 @@ display:none;
 flex-direction:column;
 align-items:stretch;
 justify-content:stretch;
-background:
-radial-gradient(ellipse 120% 90% at 50% 20%, rgba(61,255,168,0.12), transparent 55%),
-linear-gradient(180deg, #0c2e1a 0%, #0a2214 48%, #06180e 100%);
+background:#0c2e1a;
 z-index:var(--z-start-menu);
 overflow:hidden;
 }
 
+html.lobby-open,
 body.lobby-open{
 overflow:hidden;
-background:#0a2214;
+background:#0c2e1a;
+}
+
+body.lobby-open{
+padding:0;
 }
 
 body.lobby-open #app-center{
@@ -2281,14 +2284,7 @@ box-shadow:none;
 }
 
 .start-menu-inner::before{
-content:"";
-position:absolute;
-inset:0;
-background:
-radial-gradient(circle at 12% 0%, rgba(61,255,168,0.12), transparent 42%),
-radial-gradient(circle at 88% 100%, rgba(61,255,168,0.08), transparent 38%),
-linear-gradient(180deg, rgba(61,255,168,0.06), transparent 18%, transparent 82%, rgba(61,255,168,0.05));
-pointer-events:none;
+display:none;
 }
 
 .start-menu-inner::after{
@@ -5072,7 +5068,7 @@ TikTok @hulklives
 </div>
 
 <script src="game-pro.js?v=3"></script>
-<script src="game.js?v=196"></script>
+<script src="game.js?v=197"></script>
 <script src="chat.js?v=2"></script>
 <script src="friends.js?v=4"></script>
 <script src="coop-lobby.js?v=2"></script>
