@@ -2410,24 +2410,6 @@ function isAdminPanelVisible() {
   return !!(adminModal?.classList.contains("open") && isOverlayVisible(adminModal));
 }
 
-function syncMenuFallback() {
-  const fallback = document.getElementById("canvas-play-menu");
-  const nameEl = document.getElementById("canvas-play-name");
-  if (nameEl) nameEl.textContent = playerName || "Player";
-  if (!fallback) return;
-
-  const showFallback =
-    !!authToken &&
-    !gameRunning &&
-    !isGameOverVisible() &&
-    !isTutorialVisible() &&
-    !isNicknameScreenVisible() &&
-    !isAdminPanelVisible() &&
-    !isStartMenuVisible();
-
-  fallback.hidden = !showFallback;
-}
-
 function syncAuthSidePanels() {
   if (!window.gameUiReady) return;
   if (typeof refreshGlobalChat === "function") refreshGlobalChat(true);
@@ -2443,7 +2425,6 @@ function repairUiState() {
 
   if (!authToken) {
     hideStartMenu();
-    syncMenuFallback();
     if (!isNicknameScreenVisible()) showAuthScreen("login");
     return;
   }
@@ -2452,7 +2433,6 @@ function repairUiState() {
 
   if (gameRunning || isGameOverVisible() || isTutorialVisible()) {
     hideStartMenu();
-    syncMenuFallback();
     ensureRenderLoop();
     return;
   }
@@ -2461,7 +2441,6 @@ function repairUiState() {
     showStartMenu();
   }
 
-  syncMenuFallback();
   syncAuthSidePanels();
   ensureRenderLoop();
 }
@@ -2511,7 +2490,6 @@ function showStartMenu() {
   ensureRenderLoop();
   updateStartMenuUI();
   updateShopControls();
-  syncMenuFallback();
 }
 
 function hideStartMenu() {
@@ -2519,7 +2497,6 @@ function hideStartMenu() {
     startMenuOverlay.style.display = "none";
     startMenuOverlay.classList.remove("open");
   }
-  syncMenuFallback();
 }
 
 const TUTORIAL_DONE_KEY = "hulkLivesTutorialDone";

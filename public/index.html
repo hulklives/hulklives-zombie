@@ -424,75 +424,6 @@ background:#041008;
 display:none !important;
 }
 
-.canvas-play-menu{
-position:absolute;
-inset:0;
-z-index:18;
-display:flex;
-align-items:center;
-justify-content:center;
-padding:24px;
-background:
-radial-gradient(ellipse 80% 60% at 50% 40%, rgba(61,255,168,0.12), transparent 62%),
-linear-gradient(180deg, rgba(2,10,6,0.2), rgba(2,10,6,0.78));
-pointer-events:auto;
-}
-
-.canvas-play-menu[hidden]{
-display:none !important;
-}
-
-.canvas-play-panel{
-width:min(460px, 92%);
-padding:28px 24px 22px;
-border-radius:18px;
-border:1px solid rgba(61,255,168,0.28);
-background:linear-gradient(165deg, rgba(10,34,20,0.96), rgba(6,18,12,0.94));
-box-shadow:0 24px 60px rgba(0,0,0,0.42);
-text-align:center;
-}
-
-.canvas-play-eyebrow{
-margin:0 0 8px;
-font-size:11px;
-font-weight:800;
-letter-spacing:0.16em;
-text-transform:uppercase;
-color:#ffd88a;
-}
-
-.canvas-play-title{
-margin:0 0 6px;
-font-size:28px;
-font-weight:800;
-color:#d8ffe8;
-}
-
-.canvas-play-greeting{
-margin:0 0 16px;
-font-size:13px;
-color:var(--text-soft);
-}
-
-.canvas-play-copy{
-margin:0 0 18px;
-font-size:12px;
-line-height:1.5;
-color:var(--text-muted);
-}
-
-.canvas-play-actions{
-display:grid;
-grid-template-columns:1fr 1fr;
-gap:10px;
-}
-
-.canvas-play-actions .menu-primary-btn,
-.canvas-play-actions .menu-mode-btn{
-width:100%;
-min-height:52px;
-}
-
 .bomb-attack-hud{
 position:absolute;
 left:14px;
@@ -4174,18 +4105,6 @@ TikTok @hulklives
 <div id="leaderboard-list"><div class="lb-empty">Loading...</div></div>
 <div id="leaderboard-you"></div>
 </div>
-<div id="canvas-play-menu" class="canvas-play-menu" hidden>
-<div class="canvas-play-panel">
-<p class="canvas-play-eyebrow">Main menu</p>
-<h2 class="canvas-play-title">Zombie Survival</h2>
-<p class="canvas-play-greeting">Welcome, <span id="canvas-play-name">Player</span> 💚</p>
-<p class="canvas-play-copy">Waves Game = waves, XP & leaderboard. Freeplay = practice — no XP, shifting hordes.</p>
-<div class="canvas-play-actions">
-<button type="button" class="menu-primary-btn" onclick="beginRun('campaign')">Waves Game</button>
-<button type="button" class="menu-mode-btn start-menu-freeplay" onclick="beginRun('freeplay')">Freeplay</button>
-</div>
-</div>
-</div>
 </div>
 
 <!-- 🔥 RIGHT PANEL -->
@@ -4613,7 +4532,7 @@ TikTok @hulklives
 </div>
 
 <script src="game-pro.js?v=3"></script>
-<script src="game.js?v=182"></script>
+<script src="game.js?v=183"></script>
 <script src="chat.js?v=2"></script>
 <script src="online.js?v=6"></script>
 <script src="admin-panel.js?v=15"></script>
