@@ -904,9 +904,15 @@ async function openAdminPanel(tab = "announcement") {
   modal.classList.add("open");
   modal.setAttribute("aria-hidden", "false");
   switchAdminTab(tab);
-  await loadAdminState();
-  await loadAdminPlayers();
-  await loadAdminReports();
+
+  try {
+    await loadAdminState();
+    await loadAdminPlayers();
+    await loadAdminReports();
+  } catch (error) {
+    notifyAdminStatus("Could not load admin panel.", "error");
+    closeAdminPanel();
+  }
 }
 
 function closeAdminPanel() {
@@ -920,17 +926,10 @@ function closeAdminPanel() {
   document.body.classList.remove("admin-open");
   setAdminStatus("");
 
-  if (
-    wasOpen &&
-    typeof gameRunning !== "undefined" &&
-    !gameRunning &&
-    typeof isGameOverVisible === "function" &&
-    !isGameOverVisible() &&
-    typeof isNicknameScreenVisible === "function" &&
-    !isNicknameScreenVisible() &&
-    typeof showStartMenu === "function"
-  ) {
+  if (wasOpen && typeof showStartMenu === "function") {
     showStartMenu();
+  } else if (typeof repairUiState === "function") {
+    repairUiState();
   }
 
   if (wasOpen && typeof resumeFromRunModal === "function") resumeFromRunModal("admin");

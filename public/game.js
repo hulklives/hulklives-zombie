@@ -2185,7 +2185,7 @@ async function completeLogin(username, token) {
   if (typeof refreshGlobalChat === "function") refreshGlobalChat();
   if (typeof refreshOnlinePlayers === "function") refreshOnlinePlayers(true);
   enterMainMenuFlow();
-  ensureRenderLoop();
+  repairUiState();
 }
 
 async function submitAuth() {
@@ -2338,6 +2338,30 @@ function isStartMenuVisible() {
 
 function isTutorialVisible() {
   return !!(tutorialOverlay && tutorialOverlay.classList.contains("open"));
+}
+
+function repairUiState() {
+  const adminModal = document.getElementById("admin-modal");
+  const adminOpen = adminModal?.classList.contains("open");
+
+  if (!adminOpen && document.body.classList.contains("admin-open")) {
+    document.body.classList.remove("admin-open");
+  }
+
+  if (
+    authToken &&
+    !gameRunning &&
+    !isGameOverVisible() &&
+    !isNicknameScreenVisible() &&
+    !isTutorialVisible() &&
+    !adminOpen
+  ) {
+    if (!isStartMenuVisible()) {
+      showStartMenu();
+    } else {
+      ensureRenderLoop();
+    }
+  }
 }
 
 function updateStartMenuUI() {
@@ -7256,7 +7280,9 @@ function loop() {
     update();
   }
 
-  if (gameRunning || deathSequence?.active || isStartMenuVisible() || isGameOverVisible()) {
+  if (gameRunning || deathSequence?.active || isStartMenuVisible() || isGameOverVisible() || isTutorialVisible()) {
+    draw();
+  } else if (authToken && !isNicknameScreenVisible()) {
     draw();
   }
 
@@ -7562,16 +7588,7 @@ async function init() {
     if (typeof refreshGlobalChat === "function") refreshGlobalChat();
     if (typeof refreshOnlinePlayers === "function") refreshOnlinePlayers(true);
     enterMainMenuFlow();
-    if (
-      !gameRunning &&
-      !isGameOverVisible() &&
-      !isNicknameScreenVisible() &&
-      !isStartMenuVisible() &&
-      !isTutorialVisible()
-    ) {
-      showStartMenu();
-    }
-    ensureRenderLoop();
+    repairUiState();
   } else {
     hideCenterHud();
     applyArenaTheme();
@@ -7579,6 +7596,8 @@ async function init() {
     refreshLeaderboard();
     showAuthScreen("login");
   }
+
+  setInterval(repairUiState, 4000);
 }
 
 
