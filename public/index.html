@@ -894,8 +894,6 @@ padding:2px 6px;
 }
 
 #friends-panel{
-flex:0 0 auto;
-max-height:260px;
 display:flex;
 flex-direction:column;
 overflow:hidden;
@@ -904,21 +902,29 @@ border:1px solid var(--panel-border);
 box-shadow:0 4px 18px rgba(0,0,0,0.18);
 backdrop-filter:blur(6px);
 -webkit-backdrop-filter:blur(6px);
-padding:9px 10px 10px;
+padding:10px 12px 12px;
 border-radius:12px;
 color:var(--text-soft);
-margin-bottom:10px;
 }
 
-#friends-panel .panel-header{
-margin-bottom:6px;
-padding-bottom:5px;
+#start-menu #friends-panel{
+margin:14px 0 4px;
+max-height:280px;
+}
+
+#start-menu #friends-panel .panel-header{
+margin-bottom:8px;
+padding-bottom:6px;
 border-bottom:1px solid rgba(255,255,255,0.06);
 }
 
-#friends-panel .panel-title{
+#start-menu #friends-panel .panel-eyebrow{
+margin-bottom:4px;
+}
+
+#start-menu #friends-panel .panel-title{
 margin:0;
-font-size:12px;
+font-size:13px;
 font-weight:700;
 letter-spacing:0.08em;
 text-transform:uppercase;
@@ -1096,6 +1102,13 @@ color:#ffcaca;
 .friends-request-actions{
 display:flex;
 gap:4px;
+}
+
+.friends-row-actions{
+display:flex;
+flex-wrap:wrap;
+gap:4px;
+justify-content:flex-end;
 }
 
 #friends-panel.logged-out #friends-panel-list,
@@ -4526,22 +4539,6 @@ TikTok @hulklives
 </div>
 </div>
 
-<div id="friends-panel" class="side-panel friends-panel logged-out">
-<div class="panel-header">
-<p class="panel-eyebrow">Social</p>
-<h2 class="panel-title">Friends <span id="friends-panel-count">0</span></h2>
-</div>
-<form id="friends-add-form" class="friends-add-form">
-<input id="friends-add-input" type="text" maxlength="16" placeholder="Log in to add friends" autocomplete="off" disabled>
-<button type="submit" id="friends-add-btn" disabled>Add</button>
-</form>
-<div id="friends-panel-requests" class="friends-panel-requests" aria-live="polite"></div>
-<div id="friends-panel-list" class="friends-panel-list" aria-live="polite">
-<div class="friends-panel-empty">Log in to add friends.</div>
-</div>
-<p id="friends-panel-status" class="friends-panel-status" aria-live="polite"></p>
-</div>
-
 <div id="global-chat" class="side-panel global-chat-panel logged-out">
 <div class="panel-header">
 <p class="panel-eyebrow">Community</p>
@@ -4627,6 +4624,21 @@ TikTok @hulklives
 <button type="button" class="menu-mode-btn start-menu-coop-btn" onclick="openCoopLobbyMenu()">Co-op (1–4)</button>
 </div>
 <p class="start-menu-mode-copy start-menu-coop-copy">Co-op: shared waves · own HP & XP · friendly fire off · all must Ready</p>
+<div id="friends-panel" class="start-menu-friends friends-panel">
+<div class="panel-header">
+<p class="panel-eyebrow">Social</p>
+<h2 class="panel-title">Friends <span id="friends-panel-count">0</span></h2>
+</div>
+<form id="friends-add-form" class="friends-add-form">
+<input id="friends-add-input" type="text" maxlength="16" placeholder="Add player..." autocomplete="off">
+<button type="submit" id="friends-add-btn">Add</button>
+</form>
+<div id="friends-panel-requests" class="friends-panel-requests" aria-live="polite"></div>
+<div id="friends-panel-list" class="friends-panel-list" aria-live="polite">
+<div class="friends-panel-empty">Loading friends...</div>
+</div>
+<p id="friends-panel-status" class="friends-panel-status" aria-live="polite"></p>
+</div>
 <div class="menu-action-grid start-menu-secondary">
 <button type="button" class="side-action-btn" onclick="openShopMenu()"><span class="side-action-icon">🛠</span><span class="side-action-text">Shop</span></button>
 <button type="button" class="side-action-btn" onclick="openAchievementsMenu()"><span class="side-action-icon">🏅</span><span class="side-action-text">Achievements</span></button>
@@ -4938,9 +4950,9 @@ TikTok @hulklives
 </div>
 
 <script src="game-pro.js?v=3"></script>
-<script src="game.js?v=192"></script>
+<script src="game.js?v=193"></script>
 <script src="chat.js?v=2"></script>
-<script src="friends.js?v=2"></script>
+<script src="friends.js?v=3"></script>
 <script src="coop-lobby.js?v=2"></script>
 <script src="admin-panel.js?v=15"></script>
 

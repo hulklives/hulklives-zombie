@@ -1,8 +1,10 @@
 const FRIENDS_POLL_MS = 15000;
+const FRIENDS_AUTH_TOKEN_KEY = "hulkLivesAuthToken";
 
 let friendsPollTimer = null;
 let friendsReady = false;
 let friendsBusy = false;
+let friendsInitWaitTimer = null;
 
 function escapeFriendsHtml(value) {
   return String(value || "")
@@ -23,7 +25,14 @@ function hasFriendsAuth() {
     refreshAuthTokenFromStorage();
   }
   if (typeof getGameAuthToken === "function" && getGameAuthToken()) return true;
-  return Boolean(localStorage.getItem("hulkLivesAuthToken"));
+  return Boolean(localStorage.getItem(FRIENDS_AUTH_TOKEN_KEY));
+}
+
+function isFriendsPanelVisible() {
+  if (typeof isStartMenuVisible === "function") return isStartMenuVisible();
+  const panel = document.getElementById("friends-panel");
+  if (!panel) return false;
+  return window.getComputedStyle(panel).display !== "none";
 }
 
 function setFriendsPanelStatus(message, isError = false) {
@@ -143,8 +152,13 @@ function renderFriendsPanel(payload) {
 }
 
 async function refreshFriendsPanel(force = false) {
+  if (!isFriendsPanelVisible()) return;
+
   const fetchAuth = getFriendsAuthFetch();
-  if (!fetchAuth) return;
+  if (!fetchAuth) {
+    if (force) setFriendsPanelStatus("Loading friends...");
+    return;
+  }
 
   if (!hasFriendsAuth()) {
     setFriendsPanelLoggedOut();
@@ -230,6 +244,14 @@ function removeFriendAccount(username) {
   postFriendAction("/api/friends/remove", username);
 }
 
+function startFriendsPolling() {
+  if (friendsPollTimer) clearInterval(friendsPollTimer);
+  friendsPollTimer = setInterval(() => {
+    if (isFriendsPanelVisible()) refreshFriendsPanel(false);
+  }, FRIENDS_POLL_MS);
+  refreshFriendsPanel(true);
+}
+
 function initFriendsPanel() {
   if (friendsReady) return;
   friendsReady = true;
@@ -253,9 +275,22 @@ function initFriendsPanel() {
     });
   }
 
-  if (friendsPollTimer) clearInterval(friendsPollTimer);
-  friendsPollTimer = setInterval(() => refreshFriendsPanel(false), FRIENDS_POLL_MS);
-  refreshFriendsPanel(true);
+  const boot = () => {
+    if (friendsInitWaitTimer) {
+      clearInterval(friendsInitWaitTimer);
+      friendsInitWaitTimer = null;
+    }
+    startFriendsPolling();
+  };
+
+  if (window.gameUiReady) {
+    boot();
+    return;
+  }
+
+  friendsInitWaitTimer = setInterval(() => {
+    if (window.gameUiReady) boot();
+  }, 50);
 }
 
 window.refreshFriendsPanel = (force = true) => refreshFriendsPanel(force);
