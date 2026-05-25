@@ -2173,6 +2173,7 @@ function handleSessionExpired(message = "Session expired. Log in again.") {
   updateUI();
 
   if (typeof refreshGlobalChat === "function") refreshGlobalChat();
+  if (typeof refreshFriendsPanel === "function") refreshFriendsPanel();
 }
 
 function refreshAuthTokenFromStorage() {
@@ -2383,6 +2384,7 @@ async function logoutAccount() {
   setAuthError("");
   updateUI();
   if (typeof refreshGlobalChat === "function") refreshGlobalChat();
+  if (typeof refreshFriendsPanel === "function") refreshFriendsPanel();
 }
 
 function savePlayerName() {
