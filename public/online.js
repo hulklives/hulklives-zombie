@@ -1,5 +1,6 @@
 const ONLINE_HEARTBEAT_MS = 20000;
 const ONLINE_POLL_MS = 12000;
+const ONLINE_TOKEN_KEY = "hulkLivesAuthToken";
 
 let onlineHeartbeatTimer = null;
 let onlinePollTimer = null;
@@ -16,6 +17,7 @@ function escapeOnlineHtml(value) {
 
 function getOnlineAuthFetch() {
   if (typeof authFetch === "function") return authFetch;
+  if (typeof window.authFetch === "function") return window.authFetch;
   return null;
 }
 
@@ -24,7 +26,7 @@ function hasOnlineAuth() {
     refreshAuthTokenFromStorage();
   }
   if (typeof getGameAuthToken === "function" && getGameAuthToken()) return true;
-  return Boolean(localStorage.getItem("hulkLivesAuthToken"));
+  return Boolean(localStorage.getItem(ONLINE_TOKEN_KEY));
 }
 
 function getOnlinePresencePayload() {
@@ -128,7 +130,6 @@ async function sendOnlinePresence() {
 }
 
 async function refreshOnlinePlayers(force = false) {
-  if (!window.gameUiReady) return;
   const fetchAuth = getOnlineAuthFetch();
   if (!fetchAuth) return;
 
@@ -154,7 +155,7 @@ async function refreshOnlinePlayers(force = false) {
     const response = await fetchAuth("/api/presence/online");
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
-      if (!hasOnlineAuth()) {
+      if (response.status === 401) {
         setOnlinePlayersLoggedOut();
         return;
       }
@@ -166,10 +167,6 @@ async function refreshOnlinePlayers(force = false) {
     }
     renderOnlinePlayers(payload.players || []);
   } catch (error) {
-    if (!hasOnlineAuth()) {
-      setOnlinePlayersLoggedOut();
-      return;
-    }
     const list = document.getElementById("online-players-list");
     if (list) {
       list.innerHTML = '<div class="online-players-empty">Online list unavailable right now.</div>';
@@ -191,6 +188,8 @@ function initOnlinePlayers() {
   onlinePollTimer = setInterval(() => {
     refreshOnlinePlayers(false);
   }, ONLINE_POLL_MS);
+
+  refreshOnlinePlayers(true);
 }
 
 window.reportOnlinePresence = () => sendOnlinePresence();

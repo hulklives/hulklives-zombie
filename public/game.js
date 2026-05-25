@@ -2411,7 +2411,6 @@ function isAdminPanelVisible() {
 }
 
 function syncAuthSidePanels() {
-  if (!window.gameUiReady) return;
   if (typeof refreshGlobalChat === "function") refreshGlobalChat(true);
   if (typeof refreshOnlinePlayers === "function") refreshOnlinePlayers(true);
 }
@@ -7362,6 +7361,7 @@ window.confirmShopUpgrade = confirmShopUpgrade;
 window.setShopUpgradeAmount = setShopUpgradeAmount;
 window.buyUpgrade = buyUpgrade;
 window.refreshAuthTokenFromStorage = refreshAuthTokenFromStorage;
+window.authFetch = authFetch;
 window.showAuthScreen = showAuthScreen;
 window.repairUiState = repairUiState;
 window.getGameAuthToken = () => authToken;
