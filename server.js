@@ -169,7 +169,7 @@ function saveSaves() {
 }
 
 const STARTUP_SKILL_POINT_GRANTS = [
-  { id: "hulklives-300k-20260525", username: "hulklives", amount: 300000 }
+  { id: "hulklives-30k-v1", username: "hulklives", amount: 30000 }
 ];
 
 function grantPlayerSkillPoints(targetName, amount, mode = "set") {

@@ -400,7 +400,7 @@ function renderAdminPlayers(players) {
     <summary>Moderation</summary>
     <div class="admin-player-actions">
       <div class="admin-inline-actions admin-player-grant-row">
-        <input type="number" id="admin-sp-input-${encodedName}" class="admin-player-sp-input" min="1" max="999999999" step="1" value="300000" data-username="${encodedName}" aria-label="Skill points amount">
+        <input type="number" id="admin-sp-input-${encodedName}" class="admin-player-sp-input" min="1" max="999999999" step="1" value="30000" data-username="${encodedName}" aria-label="Skill points amount">
         <button type="button" class="menu-primary-btn" data-admin-player-action="grant-sp" data-username="${encodedName}">Set SP</button>
       </div>
       <button type="button" class="menu-secondary-btn" data-admin-player-action="reset" data-username="${encodedName}">Reset save</button>
