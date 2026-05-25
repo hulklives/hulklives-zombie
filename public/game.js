@@ -6267,17 +6267,83 @@ function throwBomb() {
   return true;
 }
 
-function pushExplosionEffect(x, y, radius, color = "#ff8844") {
+function pushExplosionEffect(x, y, radius, color = "#ff8844", options = {}) {
+  const life = options.life ?? 22;
   explosionEffects.push({
     x,
     y,
     radius,
     color,
-    life: 22,
-    maxLife: 22
+    life,
+    maxLife: options.maxLife ?? life,
+    kind: options.kind || "fire",
+    vx: options.vx || 0,
+    vy: options.vy || 0,
+    drag: options.drag ?? 0.9,
+    gravity: options.gravity ?? 0,
+    ringWidth: options.ringWidth || 7,
+    startRadius: options.startRadius ?? radius * 0.12
   });
-  if (explosionEffects.length > 24) {
-    explosionEffects.splice(0, explosionEffects.length - 24);
+  if (explosionEffects.length > 80) {
+    explosionEffects.splice(0, explosionEffects.length - 80);
+  }
+}
+
+function spawnBombExplosionVisuals(x, y, radius) {
+  pushExplosionEffect(x, y, radius * 0.35, "#ffffff", { kind: "flash", life: 10, maxLife: 10 });
+  pushExplosionEffect(x, y, radius * 0.62, "#fff6bf", { kind: "fire", life: 16, maxLife: 16 });
+  pushExplosionEffect(x, y, radius * 1.05, "#ff9844", { kind: "fire", life: 28, maxLife: 28 });
+  pushExplosionEffect(x, y, radius * 1.45, "#ff5522", { kind: "fire", life: 36, maxLife: 36 });
+  pushExplosionEffect(x, y, radius * 1.15, "#ffd166", {
+    kind: "ring",
+    life: 22,
+    maxLife: 22,
+    ringWidth: 10,
+    startRadius: radius * 0.18
+  });
+  pushExplosionEffect(x, y, radius * 1.55, "#ff8844", {
+    kind: "ring",
+    life: 30,
+    maxLife: 30,
+    ringWidth: 6,
+    startRadius: radius * 0.28
+  });
+  pushExplosionEffect(x, y, radius * 1.75, "#ffb04a", {
+    kind: "ring",
+    life: 38,
+    maxLife: 38,
+    ringWidth: 4,
+    startRadius: radius * 0.42
+  });
+
+  for (let i = 0; i < 28; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 5 + Math.random() * 11;
+    const sparkLife = 18 + Math.floor(Math.random() * 20);
+    pushExplosionEffect(x, y, 3 + Math.random() * 7, Math.random() > 0.45 ? "#ffd166" : "#ff6622", {
+      kind: "spark",
+      life: sparkLife,
+      maxLife: sparkLife,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      drag: 0.86,
+      gravity: 0.08
+    });
+  }
+
+  for (let i = 0; i < 10; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 1.5 + Math.random() * 4;
+    const smokeLife = 34 + Math.floor(Math.random() * 18);
+    pushExplosionEffect(x, y, 16 + Math.random() * 24, "#5a4030", {
+      kind: "smoke",
+      life: smokeLife,
+      maxLife: smokeLife,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 0.6,
+      drag: 0.94,
+      gravity: -0.03
+    });
   }
 }
 
@@ -6286,11 +6352,13 @@ function detonatePlayerBomb(bomb) {
   const cy = bomb.y;
   const radius = BOMB_BLAST_RADIUS;
 
-  addScreenShake(5.5);
+  addScreenShake(8.5);
   if (typeof playExplosionSound === "function") playExplosionSound();
-  pushExplosionEffect(cx, cy, radius * 0.45, "#fff2cc");
-  pushExplosionEffect(cx, cy, radius, "#ff8844");
-  spawnFloatingText(cx, cy - 18, "BOOM", "#ff8844", 1.15);
+  spawnBombExplosionVisuals(cx, cy, radius);
+  spawnFloatingText(cx, cy - 24, "BOOM!", "#ffb04a", 1.35);
+  if (typeof hurtFlash !== "undefined") {
+    hurtFlash = Math.min(1, (hurtFlash || 0) + 0.18);
+  }
 
   const baseDamage = Math.round(getEffectivePlayerDamage() * BOMB_DAMAGE_MULT * getRunDamageMult());
 
@@ -6330,8 +6398,18 @@ function updatePlayerBombs() {
 
 function updateExplosionEffects() {
   for (let i = explosionEffects.length - 1; i >= 0; i--) {
-    explosionEffects[i].life -= 1;
-    if (explosionEffects[i].life <= 0) {
+    const fx = explosionEffects[i];
+    fx.life -= 1;
+
+    if (fx.kind === "spark" || fx.kind === "smoke") {
+      fx.x += fx.vx;
+      fx.y += fx.vy;
+      fx.vx *= fx.drag;
+      fx.vy *= fx.drag;
+      fx.vy += fx.gravity || 0;
+    }
+
+    if (fx.life <= 0) {
       explosionEffects.splice(i, 1);
     }
   }
@@ -6340,19 +6418,21 @@ function updateExplosionEffects() {
 function drawPlayerBombs() {
   playerBombs.forEach((bomb) => {
     ctx.save();
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = "rgba(255,136,68,0.55)";
     ctx.fillStyle = "#2f2418";
     ctx.beginPath();
-    ctx.arc(bomb.x, bomb.y, 9, 0, Math.PI * 2);
+    ctx.arc(bomb.x, bomb.y, 10, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.fillStyle = "#ff8844";
     ctx.beginPath();
-    ctx.arc(bomb.x - 2, bomb.y - 1, 7, 0, Math.PI * 2);
+    ctx.arc(bomb.x - 2, bomb.y - 1, 8, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.fillStyle = "#ffd166";
     ctx.beginPath();
-    ctx.arc(bomb.x + 4, bomb.y - 5, 3, 0, Math.PI * 2);
+    ctx.arc(bomb.x + 5, bomb.y - 6, 4, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   });
@@ -6361,18 +6441,68 @@ function drawPlayerBombs() {
 function drawExplosionEffects() {
   explosionEffects.forEach((fx) => {
     const alpha = fx.life / fx.maxLife;
-    const pulse = 1 + (1 - alpha) * 0.35;
-    const radius = fx.radius * pulse;
+    const progress = 1 - alpha;
 
     ctx.save();
-    ctx.globalAlpha = alpha * 0.75;
-    const grad = ctx.createRadialGradient(fx.x, fx.y, 0, fx.x, fx.y, radius);
-    grad.addColorStop(0, colorWithAlpha("#ffffff", 0.95));
-    grad.addColorStop(0.35, colorWithAlpha(fx.color, 0.72));
+
+    if (fx.kind === "ring") {
+      const ringRadius = fx.startRadius + (fx.radius - fx.startRadius) * progress;
+      ctx.globalAlpha = alpha * 0.9;
+      ctx.strokeStyle = colorWithAlpha(fx.color, 0.85);
+      ctx.lineWidth = fx.ringWidth * (0.65 + alpha * 0.55);
+      ctx.shadowBlur = 16;
+      ctx.shadowColor = colorWithAlpha(fx.color, 0.55);
+      ctx.beginPath();
+      ctx.arc(fx.x, fx.y, ringRadius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+      return;
+    }
+
+    if (fx.kind === "spark") {
+      ctx.globalAlpha = alpha;
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = colorWithAlpha(fx.color, 0.8);
+      ctx.fillStyle = colorWithAlpha("#ffffff", 0.85);
+      ctx.beginPath();
+      ctx.arc(fx.x, fx.y, fx.radius * 0.45, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = colorWithAlpha(fx.color, 0.95);
+      ctx.beginPath();
+      ctx.arc(fx.x, fx.y, fx.radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      return;
+    }
+
+    if (fx.kind === "smoke") {
+      ctx.globalAlpha = alpha * 0.42;
+      const grad = ctx.createRadialGradient(fx.x, fx.y, 0, fx.x, fx.y, fx.radius);
+      grad.addColorStop(0, colorWithAlpha("#8a7060", 0.55));
+      grad.addColorStop(1, colorWithAlpha(fx.color, 0));
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(fx.x, fx.y, fx.radius * (0.8 + progress * 0.5), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      return;
+    }
+
+    const pulse = fx.kind === "flash" ? 1 + progress * 0.8 : 1 + progress * 0.45;
+    const drawRadius = fx.radius * pulse;
+    const coreAlpha = fx.kind === "flash" ? alpha * 0.95 : alpha * 0.82;
+
+    ctx.globalAlpha = coreAlpha;
+    ctx.shadowBlur = fx.kind === "flash" ? 28 : 18;
+    ctx.shadowColor = colorWithAlpha(fx.color, 0.65);
+    const grad = ctx.createRadialGradient(fx.x, fx.y, 0, fx.x, fx.y, drawRadius);
+    grad.addColorStop(0, colorWithAlpha("#ffffff", fx.kind === "flash" ? 1 : 0.95));
+    grad.addColorStop(0.22, colorWithAlpha("#fff2aa", 0.9));
+    grad.addColorStop(0.55, colorWithAlpha(fx.color, 0.72));
     grad.addColorStop(1, colorWithAlpha(fx.color, 0));
     ctx.fillStyle = grad;
     ctx.beginPath();
-    ctx.arc(fx.x, fx.y, radius, 0, Math.PI * 2);
+    ctx.arc(fx.x, fx.y, drawRadius, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   });
