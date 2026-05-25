@@ -844,8 +844,10 @@ function closeSettingsMenu() {
   const modal = document.getElementById("settings-modal");
   const wasOpen = modal?.classList.contains("open");
   hideSettingsModal();
-  if (wasOpen) resumeFromRunModal("settings");
-  restoreStartMenuAfterModal();
+  if (wasOpen) {
+    resumeFromRunModal("settings");
+    restoreStartMenuAfterModal();
+  }
 }
 
 let feedbackCategory = "bug";
@@ -939,8 +941,10 @@ function closeFeedbackMenu() {
   const wasOpen = modal?.classList.contains("open");
   hideFeedbackModal();
   feedbackSubmitting = false;
-  if (wasOpen) resumeFromRunModal("feedback");
-  restoreStartMenuAfterModal();
+  if (wasOpen) {
+    resumeFromRunModal("feedback");
+    restoreStartMenuAfterModal();
+  }
 }
 
 async function submitFeedback() {
@@ -1888,8 +1892,10 @@ function closeAchievementsMenu() {
   const modal = document.getElementById("achievements-modal");
   const wasOpen = modal?.classList.contains("open");
   hideAchievementsModal();
-  if (wasOpen) resumeFromRunModal("achievements");
-  restoreStartMenuAfterModal();
+  if (wasOpen) {
+    resumeFromRunModal("achievements");
+    restoreStartMenuAfterModal();
+  }
 }
 
 function getLeaderboardCrownHtml(rank) {
@@ -5733,8 +5739,10 @@ function closeShopMenu() {
   const modal = document.getElementById("shop-main-modal");
   const wasOpen = modal?.classList.contains("open");
   hideShopModal();
-  if (wasOpen) resumeFromRunModal("shop");
-  restoreStartMenuAfterModal();
+  if (wasOpen) {
+    resumeFromRunModal("shop");
+    restoreStartMenuAfterModal();
+  }
 }
 
 const SHOP_UPGRADE_INFO = {
@@ -6106,6 +6114,7 @@ async function beginRun(mode = "campaign") {
   hideStartMenu();
   hideTutorialOverlay();
   resumeAudio();
+  gameRunning = true;
 
   groundCache = { ready: false, canvas: null };
 
@@ -6170,7 +6179,7 @@ async function beginRun(mode = "campaign") {
   playerBaseSpeed = 4;
   if (typeof resetProRunState === "function") resetProRunState();
   hideBonusOffer();
-  closeShopMenu();
+  hideShopModal();
   closeShopUpgradeMenu();
   groundCache = { ready: false, canvas: null };
   applyArenaTheme();
@@ -6181,7 +6190,6 @@ async function beginRun(mode = "campaign") {
   const achievementPopup = document.getElementById("achievement-popup");
   if (achievementPopup) achievementPopup.classList.remove("visible", "hide");
 
-  gameRunning = true;
   startBackgroundMusic();
 
   updateUI();
