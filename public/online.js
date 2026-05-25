@@ -104,14 +104,8 @@ function showOnlinePlayersLoading() {
   list.innerHTML = '<div class="online-players-empty">Loading online players...</div>';
 }
 
-function handleOnlineAuthFailure(status) {
-  if (status === 401 && typeof handleSessionExpired === "function") {
-    handleSessionExpired();
-    return;
-  }
-}
-
 async function sendOnlinePresence() {
+  if (!window.gameUiReady) return null;
   const fetchAuth = getOnlineAuthFetch();
   if (!fetchAuth || !hasOnlineAuth() || onlineReporting) return null;
 
@@ -123,7 +117,6 @@ async function sendOnlinePresence() {
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
-      handleOnlineAuthFailure(response.status);
       return { ok: false, status: response.status, error: payload.error || "Could not update presence." };
     }
     return { ok: true, players: payload.players || [] };
@@ -135,6 +128,7 @@ async function sendOnlinePresence() {
 }
 
 async function refreshOnlinePlayers(force = false) {
+  if (!window.gameUiReady) return;
   const fetchAuth = getOnlineAuthFetch();
   if (!fetchAuth) return;
 
@@ -154,15 +148,16 @@ async function refreshOnlinePlayers(force = false) {
       renderOnlinePlayers(presenceResult.players || []);
       return;
     }
-    if (presenceResult?.status === 401) return;
   }
 
   try {
     const response = await fetchAuth("/api/presence/online");
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
-      handleOnlineAuthFailure(response.status);
-      if (response.status === 401) return;
+      if (!hasOnlineAuth()) {
+        setOnlinePlayersLoggedOut();
+        return;
+      }
       const list = document.getElementById("online-players-list");
       if (list) {
         list.innerHTML = `<div class="online-players-empty">${escapeOnlineHtml(payload.error || "Online list unavailable right now.")}</div>`;
@@ -171,6 +166,10 @@ async function refreshOnlinePlayers(force = false) {
     }
     renderOnlinePlayers(payload.players || []);
   } catch (error) {
+    if (!hasOnlineAuth()) {
+      setOnlinePlayersLoggedOut();
+      return;
+    }
     const list = document.getElementById("online-players-list");
     if (list) {
       list.innerHTML = '<div class="online-players-empty">Online list unavailable right now.</div>';

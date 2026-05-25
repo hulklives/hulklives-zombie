@@ -2397,11 +2397,31 @@ function isTutorialVisible() {
   return !!(tutorialOverlay && tutorialOverlay.classList.contains("open"));
 }
 
-function repairUiState() {
+function isAdminPanelVisible() {
   const adminModal = document.getElementById("admin-modal");
-  const adminOpen = adminModal?.classList.contains("open");
+  return !!(adminModal?.classList.contains("open") && isOverlayVisible(adminModal));
+}
 
-  if (!adminOpen && document.body.classList.contains("admin-open")) {
+function syncMenuFallback() {
+  const fallback = document.getElementById("canvas-play-menu");
+  const nameEl = document.getElementById("canvas-play-name");
+  if (nameEl) nameEl.textContent = playerName || "Player";
+  if (!fallback) return;
+
+  const showFallback =
+    !!authToken &&
+    !gameRunning &&
+    !isGameOverVisible() &&
+    !isTutorialVisible() &&
+    !isNicknameScreenVisible() &&
+    !isAdminPanelVisible() &&
+    !isStartMenuVisible();
+
+  fallback.hidden = !showFallback;
+}
+
+function repairUiState() {
+  if (!isAdminPanelVisible() && document.body.classList.contains("admin-open")) {
     document.body.classList.remove("admin-open");
   }
 
@@ -2409,19 +2429,26 @@ function repairUiState() {
 
   if (!authToken) {
     hideStartMenu();
+    syncMenuFallback();
     if (!isNicknameScreenVisible()) showAuthScreen("login");
     return;
   }
 
   if (isNicknameScreenVisible()) hideNicknameScreen();
 
-  if (gameRunning || isGameOverVisible() || isTutorialVisible() || adminOpen) {
+  if (gameRunning || isGameOverVisible() || isTutorialVisible()) {
     hideStartMenu();
+    syncMenuFallback();
     ensureRenderLoop();
     return;
   }
 
-  showStartMenu();
+  if (!isAdminPanelVisible()) {
+    showStartMenu();
+  }
+
+  syncMenuFallback();
+  ensureRenderLoop();
 }
 
 function updateStartMenuUI() {
@@ -2469,6 +2496,7 @@ function showStartMenu() {
   ensureRenderLoop();
   updateStartMenuUI();
   updateShopControls();
+  syncMenuFallback();
 }
 
 function hideStartMenu() {
@@ -2476,6 +2504,7 @@ function hideStartMenu() {
     startMenuOverlay.style.display = "none";
     startMenuOverlay.classList.remove("open");
   }
+  syncMenuFallback();
 }
 
 const TUTORIAL_DONE_KEY = "hulkLivesTutorialDone";
@@ -7684,7 +7713,8 @@ async function init() {
     showAuthScreen("login");
   }
 
-  setInterval(repairUiState, 4000);
+  window.gameUiReady = true;
+  setInterval(repairUiState, 2000);
 }
 
 
