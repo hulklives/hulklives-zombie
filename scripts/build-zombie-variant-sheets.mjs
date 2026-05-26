@@ -12,24 +12,24 @@ const VARIANTS = ["normal", "tank", "boss", "golden"];
 
 const IDLE_FRAMES = [
   { scale: 1.0, dy: 0 },
-  { scale: 0.985, dy: 4 },
-  { scale: 0.972, dy: 7 },
-  { scale: 0.985, dy: 4 },
+  { scale: 0.998, dy: 0 },
+  { scale: 0.996, dy: 0 },
+  { scale: 0.998, dy: 0 },
   { scale: 1.0, dy: 0 },
-  { scale: 1.015, dy: -3 },
-  { scale: 1.028, dy: -6 },
-  { scale: 1.015, dy: -3 }
+  { scale: 1.002, dy: 0 },
+  { scale: 1.004, dy: 0 },
+  { scale: 1.002, dy: 0 }
 ];
 
 const MOVE_FRAMES = [
   { scale: 1.0, dy: 0 },
-  { scale: 0.975, dy: 5 },
-  { scale: 1.02, dy: -4 },
-  { scale: 0.97, dy: 6 },
-  { scale: 1.015, dy: -3 },
-  { scale: 0.965, dy: 7 },
-  { scale: 1.025, dy: -5 },
-  { scale: 0.98, dy: 4 }
+  { scale: 0.992, dy: 0 },
+  { scale: 1.006, dy: 0 },
+  { scale: 0.994, dy: 0 },
+  { scale: 1.004, dy: 0 },
+  { scale: 0.99, dy: 0 },
+  { scale: 1.008, dy: 0 },
+  { scale: 0.996, dy: 0 }
 ];
 
 function removeBackdrop(data, width, height) {
@@ -171,7 +171,7 @@ async function main() {
         frameWidth: FRAME_SIZE,
         frameHeight: FRAME_SIZE
       },
-      sizeMult: variantId === "boss" ? 1.05 : variantId === "tank" ? 0.98 : variantId === "golden" ? 0.9 : 0.92
+      sizeMult: variantId === "boss" ? 1.28 : variantId === "tank" ? 1.22 : variantId === "golden" ? 1.12 : 1.15
     };
 
     console.log(`Built animated sheets for ${variantId}`);

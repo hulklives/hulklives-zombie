@@ -159,7 +159,7 @@ const WAVE_EVENTS = [
 
 
 
-const SPRITE_VERSION = 25;
+const SPRITE_VERSION = 26;
 
 function loadSpriteSheet(relativePath, frameCount, frameWidth, frameHeight, meta = {}) {
   const sheet = { img: new Image(), frameCount, frameWidth, frameHeight, ready: false, ...meta };
@@ -292,22 +292,22 @@ const ZOMBIE_VARIANT_META = {
   normal: {
     idle: { path: "images/zombies/zombie-normal-idle-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
     move: { path: "images/zombies/zombie-normal-move-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
-    sizeMult: 0.92
+    sizeMult: 1.15
   },
   tank: {
     idle: { path: "images/zombies/zombie-tank-idle-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
     move: { path: "images/zombies/zombie-tank-move-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
-    sizeMult: 0.98
+    sizeMult: 1.22
   },
   boss: {
     idle: { path: "images/zombies/zombie-boss-idle-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
     move: { path: "images/zombies/zombie-boss-move-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
-    sizeMult: 1.05
+    sizeMult: 1.28
   },
   golden: {
     idle: { path: "images/zombies/zombie-golden-idle-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
     move: { path: "images/zombies/zombie-golden-move-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
-    sizeMult: 0.9
+    sizeMult: 1.12
   }
 };
 
@@ -353,7 +353,7 @@ function usesZombieVariantArt(z) {
 function getZombieDrawSheet(z) {
   const set = getZombieVariantSet(z);
   if (usesZombieVariantArt(z)) {
-    return (z.animTick || 0) > 0 ? set.move : set.idle;
+    return set.move;
   }
   return (z.animTick || 0) > 0 ? zombieSprites.move : zombieSprites.idle;
 }
@@ -372,9 +372,10 @@ function getZombieDrawMotion(z) {
 
   const set = getZombieVariantSet(z);
   const facingLeft = Math.cos(z.facingAngle || 0) < 0;
+  const moving = (z.animTick || 0) > 0;
 
   return {
-    frame: z.animFrame || 0,
+    frame: moving ? z.animFrame || 0 : 0,
     cyOffset: 0,
     angle: 0,
     squashX: facingLeft ? -1 : 1,
@@ -7202,10 +7203,13 @@ function update() {
       }
       z.facingAngle = Math.atan2(dy, dx);
       z.animTick = (z.animTick || 0) + 1;
-      if (z.animTick % 6 === 0) {
+      if (z.animTick % 8 === 0) {
         const animFrames = usesZombieVariantArt(z) ? ZOMBIE_VARIANT_FRAME_COUNT : zombieSprites.move.frameCount;
         z.animFrame = ((z.animFrame || 0) + 1) % animFrames;
       }
+    } else {
+      z.animTick = 0;
+      z.animFrame = 0;
     }
   }
 
@@ -7274,15 +7278,18 @@ function drawHealthBar(cx, top, hp, maxHp, options = {}) {
   ctx.restore();
 }
 
-function drawEntityShadow(cx, cy, size) {
+function drawEntityShadow(cx, cy, size, anchor = "center") {
+  const shadowY = anchor === "feet" ? cy + size * 0.03 : cy + size * 0.14;
+  const shadowW = size * (anchor === "feet" ? 0.42 : 0.36);
+  const shadowH = size * (anchor === "feet" ? 0.15 : 0.13);
   ctx.fillStyle = "rgba(0,0,0,0.42)";
   ctx.beginPath();
-  ctx.ellipse(cx, cy + size * 0.14, size * 0.36, size * 0.13, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx, shadowY, shadowW, shadowH, 0, 0, Math.PI * 2);
   ctx.fill();
 }
 
 function drawSpriteWithGlow(sheet, frame, cx, cy, size, angle, glowColor, glow = {}) {
-  drawEntityShadow(cx, cy, size);
+  drawEntityShadow(cx, cy, size, glow.anchor);
   if (!sheet.ready || sheet.frameWidth <= 0) return false;
 
   const glowBlur = glow.blur ?? 14;
@@ -7417,7 +7424,7 @@ function draw() {
       ctx.restore();
     }
 
-    const footY = z.y + z.size * 0.94;
+    const footY = z.y + z.size;
     const drawX = cx;
     const drawY = variantArt ? footY : cy + motion.cyOffset;
     const glowOptions = {
