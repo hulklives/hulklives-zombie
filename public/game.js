@@ -159,7 +159,7 @@ const WAVE_EVENTS = [
 
 
 
-const SPRITE_VERSION = 31;
+const SPRITE_VERSION = 32;
 
 function loadSpriteSheet(relativePath, frameCount, frameWidth, frameHeight, meta = {}) {
   const sheet = { img: new Image(), frameCount, frameWidth, frameHeight, ready: false, ...meta };
@@ -292,22 +292,22 @@ const ZOMBIE_VARIANT_META = {
   normal: {
     idle: { path: "images/zombies/zombie-normal-idle-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
     move: { path: "images/zombies/zombie-normal-move-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
-    sizeMult: 1.18
+    sizeMult: 1.32
   },
   tank: {
     idle: { path: "images/zombies/zombie-tank-idle-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
     move: { path: "images/zombies/zombie-tank-move-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
-    sizeMult: 1.18
+    sizeMult: 1.36
   },
   boss: {
     idle: { path: "images/zombies/zombie-boss-idle-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
     move: { path: "images/zombies/zombie-boss-move-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
-    sizeMult: 1.24
+    sizeMult: 1.42
   },
   golden: {
     idle: { path: "images/zombies/zombie-golden-idle-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
     move: { path: "images/zombies/zombie-golden-move-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
-    sizeMult: 1.1
+    sizeMult: 1.28
   }
 };
 
@@ -375,13 +375,16 @@ function getZombieDrawMotion(z) {
 
   const set = getZombieVariantSet(z);
   const moving = (z.animTick || 0) > 0;
+  const drawSize = z.size * (set.sizeMult || 1);
 
   return {
     frame: moving ? z.animFrame || 0 : 0,
-    cyOffset: 0,
+    cyOffset: z.size * 0.18,
     angle: z.facingAngle || 0,
     squashX: 1,
-    drawSize: z.size * (set.sizeMult || 1),
+    drawSize,
+    shadowY: z.y + z.size * 0.94,
+    shadowSize: drawSize * 0.38,
     anchor: "center"
   };
 }
@@ -7294,7 +7297,9 @@ function drawEntityShadow(cx, cy, size, anchor = "center") {
 }
 
 function drawSpriteWithGlow(sheet, frame, cx, cy, size, angle, glowColor, glow = {}) {
-  drawEntityShadow(cx, cy, size, glow.anchor);
+  if (!glow.skipShadow) {
+    drawEntityShadow(cx, cy, size, glow.anchor);
+  }
   if (!sheet.ready || sheet.frameWidth <= 0) return false;
 
   const glowBlur = glow.blur ?? 14;
@@ -7433,8 +7438,13 @@ function draw() {
     const drawY = cy + motion.cyOffset;
     const glowOptions = {
       squashX: motion.squashX,
-      anchor: motion.anchor
+      anchor: motion.anchor,
+      skipShadow: variantArt
     };
+
+    if (variantArt) {
+      drawEntityShadow(cx, motion.shadowY, motion.shadowSize, "feet");
+    }
 
     if (
       !drawSpriteWithGlow(
@@ -7467,7 +7477,7 @@ function draw() {
       ctx.fillRect(z.x, z.y, z.size, z.size);
     }
 
-    const barTop = variantArt ? cy - motion.drawSize * 0.52 : z.y - 2;
+    const barTop = variantArt ? cy + motion.cyOffset - motion.drawSize * 0.48 : z.y - 2;
     const barWidth = Math.max(34, z.size * 0.62);
     const isElite =
       isWaveBoss || z.tier === "boss" || z.tier === "medium" || z.tier === "tank";
