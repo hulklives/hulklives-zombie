@@ -281,6 +281,8 @@ const playerSprites = {
   idle: loadSpriteSheet("images/player-idle-sheet-noweapon.png", 20, 280, 240)
 };
 
+const USE_ZOMBIE_VARIANT_ART = false;
+
 const zombieSprites = {
   move: loadSpriteSheet("images/zombie-move-sheet.png", 17, 288, 311),
   idle: loadSpriteSheet("images/zombie-idle-sheet.png", 17, 241, 222)
@@ -347,6 +349,7 @@ function getZombieVariantSet(z) {
 }
 
 function usesZombieVariantArt(z) {
+  if (!USE_ZOMBIE_VARIANT_ART) return false;
   const set = getZombieVariantSet(z);
   return Boolean(set?.move?.ready || set?.idle?.ready);
 }
