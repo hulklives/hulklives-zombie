@@ -159,7 +159,7 @@ const WAVE_EVENTS = [
 
 
 
-const SPRITE_VERSION = 23;
+const SPRITE_VERSION = 24;
 
 function loadSpriteSheet(relativePath, frameCount, frameWidth, frameHeight, meta = {}) {
   const sheet = { img: new Image(), frameCount, frameWidth, frameHeight, ready: false, ...meta };
@@ -286,17 +286,51 @@ const zombieSprites = {
   idle: loadSpriteSheet("images/zombie-idle-sheet.png", 17, 241, 222)
 };
 
+const ZOMBIE_VARIANT_FRAME_COUNT = 8;
+
 const ZOMBIE_VARIANT_META = {
-  normal: { width: 360, height: 424 },
-  tank: { width: 384, height: 499 },
-  boss: { width: 384, height: 637 },
-  golden: { width: 367, height: 513 }
+  normal: {
+    idle: { path: "images/zombies/zombie-normal-idle-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
+    move: { path: "images/zombies/zombie-normal-move-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
+    sizeMult: 1
+  },
+  tank: {
+    idle: { path: "images/zombies/zombie-tank-idle-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
+    move: { path: "images/zombies/zombie-tank-move-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
+    sizeMult: 1.08
+  },
+  boss: {
+    idle: { path: "images/zombies/zombie-boss-idle-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
+    move: { path: "images/zombies/zombie-boss-move-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
+    sizeMult: 1.18
+  },
+  golden: {
+    idle: { path: "images/zombies/zombie-golden-idle-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
+    move: { path: "images/zombies/zombie-golden-move-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
+    sizeMult: 0.96
+  }
 };
 
-const zombieVariantSprites = Object.fromEntries(
+const zombieVariantSets = Object.fromEntries(
   Object.entries(ZOMBIE_VARIANT_META).map(([key, meta]) => [
     key,
-    loadSpriteSheet(`images/zombies/zombie-${key}.png`, 1, meta.width, meta.height, { variant: key })
+    {
+      idle: loadSpriteSheet(
+        meta.idle.path,
+        meta.idle.frameCount,
+        meta.idle.frameWidth,
+        meta.idle.frameHeight,
+        { variant: key, kind: "idle" }
+      ),
+      move: loadSpriteSheet(
+        meta.move.path,
+        meta.move.frameCount,
+        meta.move.frameWidth,
+        meta.move.frameHeight,
+        { variant: key, kind: "move" }
+      ),
+      sizeMult: meta.sizeMult
+    }
   ])
 );
 
@@ -307,14 +341,20 @@ function getZombieVisualKey(z) {
   return "normal";
 }
 
+function getZombieVariantSet(z) {
+  return zombieVariantSets[getZombieVisualKey(z)];
+}
+
 function usesZombieVariantArt(z) {
-  const sheet = zombieVariantSprites[getZombieVisualKey(z)];
-  return Boolean(sheet?.ready);
+  const set = getZombieVariantSet(z);
+  return Boolean(set?.move?.ready && set?.idle?.ready);
 }
 
 function getZombieDrawSheet(z) {
-  const variantSheet = zombieVariantSprites[getZombieVisualKey(z)];
-  if (variantSheet?.ready) return variantSheet;
+  const set = getZombieVariantSet(z);
+  if (usesZombieVariantArt(z)) {
+    return (z.animTick || 0) > 0 ? set.move : set.idle;
+  }
   return (z.animTick || 0) > 0 ? zombieSprites.move : zombieSprites.idle;
 }
 
@@ -324,19 +364,20 @@ function getZombieDrawMotion(z) {
       frame: z.animFrame || 0,
       cyOffset: 0,
       angle: z.facingAngle || 0,
-      squashX: 1
+      squashX: 1,
+      drawSize: z.size
     };
   }
 
-  const moving = (z.animTick || 0) > 0;
-  const bob = moving ? Math.sin((z.animFrame || 0) * 0.55) * z.size * 0.045 : 0;
+  const set = getZombieVariantSet(z);
   const facingLeft = Math.cos(z.facingAngle || 0) < 0;
 
   return {
-    frame: 0,
-    cyOffset: bob,
+    frame: z.animFrame || 0,
+    cyOffset: 0,
     angle: 0,
-    squashX: facingLeft ? -1 : 1
+    squashX: facingLeft ? -1 : 1,
+    drawSize: z.size * (set.sizeMult || 1)
   };
 }
 
@@ -6881,6 +6922,9 @@ function drawSpriteSheet(sheet, frame, cx, cy, size, angle, options = {}) {
   ctx.translate(cx, cy);
   ctx.rotate(angle || 0);
   ctx.imageSmoothingEnabled = true;
+  if ("imageSmoothingQuality" in ctx) {
+    ctx.imageSmoothingQuality = "high";
+  }
   ctx.drawImage(
     sheet.img,
     frameIndex * sheet.frameWidth,
@@ -7155,7 +7199,7 @@ function update() {
       z.facingAngle = Math.atan2(dy, dx);
       z.animTick = (z.animTick || 0) + 1;
       if (z.animTick % 6 === 0) {
-        const animFrames = usesZombieVariantArt(z) ? 24 : zombieSprites.move.frameCount;
+        const animFrames = usesZombieVariantArt(z) ? ZOMBIE_VARIANT_FRAME_COUNT : zombieSprites.move.frameCount;
         z.animFrame = ((z.animFrame || 0) + 1) % animFrames;
       }
     }
@@ -7375,7 +7419,7 @@ function draw() {
         motion.frame,
         cx,
         cy + motion.cyOffset,
-        z.size,
+        motion.drawSize,
         motion.angle,
         isWaveBoss ? "#d050ff" : z.golden ? "#ffd54a" : archetypeDef?.glow || theme.zombieGlow,
         isWaveBoss
@@ -7400,7 +7444,7 @@ function draw() {
       ctx.fillRect(z.x, z.y, z.size, z.size);
     }
 
-    const barTop = variantArt ? cy - z.size * 0.58 : z.y - 2;
+    const barTop = variantArt ? cy - motion.drawSize * 0.58 : z.y - 2;
     const barWidth = Math.max(34, z.size * 0.62);
     const isElite =
       isWaveBoss || z.tier === "boss" || z.tier === "medium" || z.tier === "tank";

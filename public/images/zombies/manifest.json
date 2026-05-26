@@ -1,22 +1,62 @@
 {
   "normal": {
-    "path": "images/zombies/zombie-normal.png",
-    "width": 360,
-    "height": 424
+    "idle": {
+      "path": "images/zombies/zombie-normal-idle-sheet.png",
+      "frameCount": 8,
+      "frameWidth": 640,
+      "frameHeight": 640
+    },
+    "move": {
+      "path": "images/zombies/zombie-normal-move-sheet.png",
+      "frameCount": 8,
+      "frameWidth": 640,
+      "frameHeight": 640
+    },
+    "sizeMult": 1
   },
   "tank": {
-    "path": "images/zombies/zombie-tank.png",
-    "width": 384,
-    "height": 499
+    "idle": {
+      "path": "images/zombies/zombie-tank-idle-sheet.png",
+      "frameCount": 8,
+      "frameWidth": 640,
+      "frameHeight": 640
+    },
+    "move": {
+      "path": "images/zombies/zombie-tank-move-sheet.png",
+      "frameCount": 8,
+      "frameWidth": 640,
+      "frameHeight": 640
+    },
+    "sizeMult": 1.08
   },
   "boss": {
-    "path": "images/zombies/zombie-boss.png",
-    "width": 384,
-    "height": 637
+    "idle": {
+      "path": "images/zombies/zombie-boss-idle-sheet.png",
+      "frameCount": 8,
+      "frameWidth": 640,
+      "frameHeight": 640
+    },
+    "move": {
+      "path": "images/zombies/zombie-boss-move-sheet.png",
+      "frameCount": 8,
+      "frameWidth": 640,
+      "frameHeight": 640
+    },
+    "sizeMult": 1.18
   },
   "golden": {
-    "path": "images/zombies/zombie-golden.png",
-    "width": 367,
-    "height": 513
+    "idle": {
+      "path": "images/zombies/zombie-golden-idle-sheet.png",
+      "frameCount": 8,
+      "frameWidth": 640,
+      "frameHeight": 640
+    },
+    "move": {
+      "path": "images/zombies/zombie-golden-move-sheet.png",
+      "frameCount": 8,
+      "frameWidth": 640,
+      "frameHeight": 640
+    },
+    "sizeMult": 0.96
   }
 }
