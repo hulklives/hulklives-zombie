@@ -159,11 +159,31 @@ const WAVE_EVENTS = [
 
 
 
-const SPRITE_VERSION = 33;
+const SPRITE_VERSION = 34;
 
 function loadSpriteSheet(relativePath, frameCount, frameWidth, frameHeight, meta = {}) {
   const sheet = { img: new Image(), frameCount, frameWidth, frameHeight, ready: false, ...meta };
   sheet.img.onload = () => {
+    sheet.ready = true;
+  };
+  sheet.img.src = `${relativePath}?v=${SPRITE_VERSION}`;
+  return sheet;
+}
+
+function loadStaticImage(relativePath, meta = {}) {
+  const sheet = {
+    img: new Image(),
+    frameCount: 1,
+    frameWidth: meta.frameWidth || 256,
+    frameHeight: meta.frameHeight || 256,
+    ready: false,
+    ...meta
+  };
+  sheet.img.onload = () => {
+    if (sheet.img.naturalWidth > 0 && sheet.img.naturalHeight > 0) {
+      sheet.frameWidth = sheet.img.naturalWidth;
+      sheet.frameHeight = sheet.img.naturalHeight;
+    }
     sheet.ready = true;
   };
   sheet.img.src = `${relativePath}?v=${SPRITE_VERSION}`;
@@ -288,6 +308,27 @@ const zombieSprites = {
   idle: loadSpriteSheet("images/zombie-idle-sheet.png", 17, 241, 222)
 };
 
+const chibiZombieSprites = {
+  green: loadStaticImage("images/zombies/chibi/chibi-green.png"),
+  teal: loadStaticImage("images/zombies/chibi/chibi-teal.png"),
+  pink: loadStaticImage("images/zombies/chibi/chibi-pink.png")
+};
+
+function pickZombieSkinStyle() {
+  const styles = ["skeleton", "chibi-green", "chibi-teal", "chibi-pink"];
+  return styles[Math.floor(Math.random() * styles.length)];
+}
+
+function usesChibiZombieSkin(z) {
+  if (!z.skinStyle || !z.skinStyle.startsWith("chibi-")) return false;
+  const key = z.skinStyle.slice(6);
+  return Boolean(chibiZombieSprites[key]?.ready);
+}
+
+function getChibiZombieSheet(z) {
+  return chibiZombieSprites[z.skinStyle.slice(6)];
+}
+
 const ZOMBIE_VARIANT_FRAME_COUNT = 8;
 const ZOMBIE_VARIANT_FACING_OFFSET = -Math.PI / 2;
 
@@ -355,6 +396,9 @@ function usesZombieVariantArt(z) {
 }
 
 function getZombieDrawSheet(z) {
+  if (usesChibiZombieSkin(z)) {
+    return getChibiZombieSheet(z);
+  }
   const set = getZombieVariantSet(z);
   if (usesZombieVariantArt(z)) {
     const moving = (z.animTick || 0) > 0;
@@ -366,6 +410,20 @@ function getZombieDrawSheet(z) {
 }
 
 function getZombieDrawMotion(z) {
+  if (usesChibiZombieSkin(z)) {
+    const moving = (z.animTick || 0) > 0;
+    const facingLeft = Math.cos(z.facingAngle || 0) < 0;
+    const bob = moving ? Math.sin((z.animFrame || 0) * 0.65) * z.size * 0.035 : 0;
+    return {
+      frame: 0,
+      cyOffset: bob,
+      angle: 0,
+      squashX: facingLeft ? -1 : 1,
+      drawSize: z.size * 1.22,
+      anchor: "center"
+    };
+  }
+
   if (!usesZombieVariantArt(z)) {
     return {
       frame: z.animFrame || 0,
@@ -5264,7 +5322,8 @@ function spawnWaveBoss() {
     damage: stats.damage,
     hitCooldown: 36,
     facingAngle: Math.atan2(toPlayerY, toPlayerX),
-    jitter: Math.random() * 0.5 + 0.5
+    jitter: Math.random() * 0.5 + 0.5,
+    skinStyle: pickZombieSkinStyle()
   });
 }
 
@@ -5404,7 +5463,8 @@ function spawnFreeplayBoss() {
     damage: stats.damage,
     hitCooldown: 36,
     facingAngle: Math.atan2(toPlayerY, toPlayerX),
-    jitter: Math.random() * 0.4 + 0.55
+    jitter: Math.random() * 0.4 + 0.55,
+    skinStyle: pickZombieSkinStyle()
   });
 
   freeplayLastBossAt = freeplayRunSeconds;
@@ -5525,7 +5585,8 @@ function spawnFreeplayZombie(options = {}) {
     hitCooldown: 0,
     facingAngle: Math.atan2(toPlayerY, toPlayerX),
     jitter: fast ? Math.random() * 0.35 + 0.75 : Math.random() * 0.25 + 0.55,
-    freeplay: true
+    freeplay: true,
+    skinStyle: pickZombieSkinStyle()
   });
 }
 
@@ -5679,7 +5740,9 @@ function spawnWave() {
 
       facingAngle: Math.atan2(toPlayerY, toPlayerX),
 
-      jitter: Math.random() * 0.5 + 0.5
+      jitter: Math.random() * 0.5 + 0.5,
+
+      skinStyle: pickZombieSkinStyle()
 
     });
   });
@@ -7421,14 +7484,15 @@ function draw() {
     const isWaveBoss = z.tier === "waveBoss" || z.isWaveBoss;
     const archetypeDef = z.archetype ? ARCHETYPE_DEFS[z.archetype] : null;
     const variantArt = usesZombieVariantArt(z);
+    const chibiSkin = usesChibiZombieSkin(z);
     const sheet = getZombieDrawSheet(z);
     const motion = getZombieDrawMotion(z);
 
-    if (!variantArt) {
+    if (!variantArt && !chibiSkin) {
       drawArchetypeTint(z, cx, cy);
     }
     drawArchetypeTelegraph(z, cx, cy);
-    if (z.golden && !variantArt) {
+    if (z.golden && !variantArt && !chibiSkin) {
       ctx.save();
       ctx.globalAlpha = 0.24;
       ctx.fillStyle = "#ffd54a";
