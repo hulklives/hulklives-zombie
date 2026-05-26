@@ -6885,6 +6885,23 @@ function buyUpgrade(type) {
 
 
 
+function renderAbilityChargeDots(container, filled, max) {
+  if (!container) return;
+  const count = Math.max(0, Math.min(max, filled));
+  if (container.childElementCount === max) {
+    [...container.children].forEach((dot, index) => {
+      dot.classList.toggle("filled", index < count);
+    });
+    return;
+  }
+  container.innerHTML = "";
+  for (let i = 0; i < max; i++) {
+    const dot = document.createElement("span");
+    dot.className = `ability-dot${i < count ? " filled" : ""}`;
+    container.appendChild(dot);
+  }
+}
+
 function updateUI() {
 
   const hp = document.getElementById("hp");
@@ -6952,8 +6969,10 @@ function updateUI() {
   const bombAttackHud = document.getElementById("ability-hud");
   const bombAttackStatus = document.getElementById("bomb-attack-status");
   const bombAttackTimer = document.getElementById("bomb-attack-timer");
+  const bombAttackDots = document.getElementById("bomb-attack-dots");
   const pulseAttackStatus = document.getElementById("molotov-attack-status");
   const pulseAttackTimer = document.getElementById("molotov-attack-timer");
+  const pulseAttackDots = document.getElementById("molotov-attack-dots");
   const pulseAbilityChip = document.getElementById("molotov-ability-chip");
   if (bombAttackHud) {
     bombAttackHud.hidden = !gameRunning || isGameOverVisible();
@@ -6964,14 +6983,26 @@ function updateUI() {
   const onCooldown = bombCharges <= 0 && cooldownMs > 0;
   const molotovCooldownMs = getMolotovCooldownRemainingMs();
   const molotovOnCooldown = molotovCharges <= 0 && molotovCooldownMs > 0;
+  const bombFilled =
+    !gameRunning || isGameOverVisible() ? BOMB_MAX_CHARGES : onCooldown ? 0 : bombCharges;
+  const molotovFilled =
+    !gameRunning || isGameOverVisible()
+      ? MOLOTOV_MAX_CHARGES
+      : molotovOnCooldown
+        ? 0
+        : molotovCharges;
+
+  renderAbilityChargeDots(bombAttackDots, bombFilled, BOMB_MAX_CHARGES);
+  renderAbilityChargeDots(pulseAttackDots, molotovFilled, MOLOTOV_MAX_CHARGES);
 
   if (bombAttackStatus) {
-    if (!gameRunning || isGameOverVisible()) {
-      bombAttackStatus.textContent = `x${BOMB_MAX_CHARGES}`;
+    if (!gameRunning || isGameOverVisible() || onCooldown) {
+      bombAttackStatus.hidden = true;
     } else if (bombCharges > 0) {
-      bombAttackStatus.textContent = `x${bombCharges}`;
+      bombAttackStatus.hidden = false;
+      bombAttackStatus.textContent = `×${bombCharges}`;
     } else {
-      bombAttackStatus.textContent = "0";
+      bombAttackStatus.hidden = true;
     }
   }
 
@@ -6981,7 +7012,7 @@ function updateUI() {
       bombAttackTimer.hidden = true;
     } else if (onCooldown) {
       bombAttackTimer.hidden = false;
-      bombAttackTimer.textContent = `${Math.ceil(cooldownMs / 1000)}s`;
+      bombAttackTimer.textContent = `⏳ ${Math.ceil(cooldownMs / 1000)}s`;
     } else {
       bombAttackTimer.textContent = "";
       bombAttackTimer.hidden = true;
@@ -6995,15 +7026,17 @@ function updateUI() {
   const bombAbilityChip = document.getElementById("bomb-ability-chip");
   if (bombAbilityChip) {
     bombAbilityChip.classList.toggle("cooldown", onCooldown);
+    bombAbilityChip.classList.toggle("ready", !onCooldown && bombFilled > 0 && gameRunning && !isGameOverVisible());
   }
 
   if (pulseAttackStatus) {
-    if (!gameRunning || isGameOverVisible()) {
-      pulseAttackStatus.textContent = `x${MOLOTOV_MAX_CHARGES}`;
+    if (!gameRunning || isGameOverVisible() || molotovOnCooldown) {
+      pulseAttackStatus.hidden = true;
     } else if (molotovCharges > 0) {
-      pulseAttackStatus.textContent = `x${molotovCharges}`;
+      pulseAttackStatus.hidden = false;
+      pulseAttackStatus.textContent = `×${molotovCharges}`;
     } else {
-      pulseAttackStatus.textContent = "0";
+      pulseAttackStatus.hidden = true;
     }
   }
 
@@ -7013,7 +7046,7 @@ function updateUI() {
       pulseAttackTimer.hidden = true;
     } else if (molotovOnCooldown) {
       pulseAttackTimer.hidden = false;
-      pulseAttackTimer.textContent = `${Math.ceil(molotovCooldownMs / 1000)}s`;
+      pulseAttackTimer.textContent = `⏳ ${Math.ceil(molotovCooldownMs / 1000)}s`;
     } else {
       pulseAttackTimer.textContent = "";
       pulseAttackTimer.hidden = true;
@@ -7022,6 +7055,10 @@ function updateUI() {
 
   if (pulseAbilityChip) {
     pulseAbilityChip.classList.toggle("cooldown", molotovOnCooldown);
+    pulseAbilityChip.classList.toggle(
+      "ready",
+      !molotovOnCooldown && molotovFilled > 0 && gameRunning && !isGameOverVisible()
+    );
   }
 
   if (skillPointsDisplay) skillPointsDisplay.innerText = player.skillPoints;
