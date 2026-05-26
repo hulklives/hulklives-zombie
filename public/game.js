@@ -217,27 +217,13 @@ function hash2D(x, y, seed) {
   return n - Math.floor(n);
 }
 
-const ARENA_TREES = (() => {
-  const trees = [];
-  let seed = 0;
-  const minTreeGap = 240;
-  while (trees.length < 10 && seed < 500) {
-    const x = 90 + hash2D(seed, 3, 777) * (WORLD_WIDTH - 180);
-    const y = 90 + hash2D(seed, 9, 778) * (WORLD_HEIGHT - 180);
-    seed += 1;
-    const dist = Math.hypot(x - WORLD_WIDTH / 2, y - WORLD_HEIGHT / 2);
-    if (dist < 300) continue;
-    if (trees.some((t) => Math.hypot(t.x - x, t.y - y) < minTreeGap)) continue;
-    trees.push({
-      x,
-      y,
-      scale: 0.2 + hash2D(seed, 13, 779) * 0.12,
-      flip: hash2D(seed, 21, 780) > 0.5 ? -1 : 1,
-      alpha: 0.7 + hash2D(seed, 29, 781) * 0.14
-    });
-  }
-  return trees;
-})();
+const ARENA_TREE_INSET = 120;
+const ARENA_TREES = [
+  { x: ARENA_TREE_INSET, y: ARENA_TREE_INSET, scale: 0.44, flip: 1, alpha: 0.88 },
+  { x: WORLD_WIDTH - ARENA_TREE_INSET, y: ARENA_TREE_INSET, scale: 0.42, flip: -1, alpha: 0.86 },
+  { x: ARENA_TREE_INSET, y: WORLD_HEIGHT - ARENA_TREE_INSET, scale: 0.46, flip: -1, alpha: 0.87 },
+  { x: WORLD_WIDTH - ARENA_TREE_INSET, y: WORLD_HEIGHT - ARENA_TREE_INSET, scale: 0.43, flip: 1, alpha: 0.85 }
+];
 
 
 function buildGroundCanvas(theme) {
@@ -7472,8 +7458,8 @@ function drawArenaTrees() {
   const baseH = treeDecorImage.naturalHeight;
 
   for (const tree of ARENA_TREES) {
-    const w = baseW * tree.scale * 0.26;
-    const h = baseH * tree.scale * 0.26;
+    const w = baseW * tree.scale * 0.38;
+    const h = baseH * tree.scale * 0.38;
     const footY = tree.y;
 
     ctx.save();
