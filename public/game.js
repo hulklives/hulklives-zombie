@@ -220,18 +220,20 @@ function hash2D(x, y, seed) {
 const ARENA_TREES = (() => {
   const trees = [];
   let seed = 0;
-  while (trees.length < 36 && seed < 500) {
-    const x = 70 + hash2D(seed, 3, 777) * (WORLD_WIDTH - 140);
-    const y = 70 + hash2D(seed, 9, 778) * (WORLD_HEIGHT - 140);
+  const minTreeGap = 240;
+  while (trees.length < 10 && seed < 500) {
+    const x = 90 + hash2D(seed, 3, 777) * (WORLD_WIDTH - 180);
+    const y = 90 + hash2D(seed, 9, 778) * (WORLD_HEIGHT - 180);
     seed += 1;
     const dist = Math.hypot(x - WORLD_WIDTH / 2, y - WORLD_HEIGHT / 2);
-    if (dist < 190) continue;
+    if (dist < 300) continue;
+    if (trees.some((t) => Math.hypot(t.x - x, t.y - y) < minTreeGap)) continue;
     trees.push({
       x,
       y,
-      scale: 0.68 + hash2D(seed, 13, 779) * 0.52,
+      scale: 0.2 + hash2D(seed, 13, 779) * 0.12,
       flip: hash2D(seed, 21, 780) > 0.5 ? -1 : 1,
-      alpha: 0.82 + hash2D(seed, 29, 781) * 0.14
+      alpha: 0.7 + hash2D(seed, 29, 781) * 0.14
     });
   }
   return trees;
@@ -7470,15 +7472,15 @@ function drawArenaTrees() {
   const baseH = treeDecorImage.naturalHeight;
 
   for (const tree of ARENA_TREES) {
-    const w = baseW * tree.scale * 0.58;
-    const h = baseH * tree.scale * 0.58;
+    const w = baseW * tree.scale * 0.26;
+    const h = baseH * tree.scale * 0.26;
     const footY = tree.y;
 
     ctx.save();
     ctx.globalAlpha = tree.alpha;
-    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    ctx.fillStyle = "rgba(0,0,0,0.16)";
     ctx.beginPath();
-    ctx.ellipse(tree.x, footY + h * 0.04, w * 0.22, h * 0.05, 0, 0, Math.PI * 2);
+    ctx.ellipse(tree.x, footY + h * 0.04, w * 0.2, h * 0.045, 0, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.translate(tree.x, footY);
