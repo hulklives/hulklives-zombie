@@ -69,7 +69,13 @@ async function loadPreparedSource(variantId) {
 
 async function renderFrame(sourceBuffer, keyframe, variantId) {
   const baseMax =
-    variantId === "boss" ? 0.5 : variantId === "tank" ? 0.46 : variantId === "golden" ? 0.44 : 0.42;
+    variantId === "boss"
+      ? 0.5
+      : variantId === "tank"
+        ? 0.48
+        : variantId === "golden"
+          ? 0.46
+          : 0.5;
   const maxBox = FRAME_SIZE - 28;
   let resized = await sharp(sourceBuffer)
     .resize({
@@ -183,7 +189,7 @@ async function main() {
         frameWidth: FRAME_SIZE,
         frameHeight: FRAME_SIZE
       },
-      sizeMult: variantId === "boss" ? 1.24 : variantId === "tank" ? 1.18 : variantId === "golden" ? 1.1 : 1.12
+      sizeMult: variantId === "boss" ? 1.24 : variantId === "tank" ? 1.18 : variantId === "golden" ? 1.1 : 1.18
     };
 
     console.log(`Built top-down sheets for ${variantId}`);

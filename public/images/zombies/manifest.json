@@ -12,7 +12,7 @@
       "frameWidth": 640,
       "frameHeight": 640
     },
-    "sizeMult": 1.12
+    "sizeMult": 1.18
   },
   "tank": {
     "idle": {
