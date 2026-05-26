@@ -37,10 +37,8 @@ function removeBackdrop(data) {
     const r = data[i];
     const g = data[i + 1];
     const b = data[i + 2];
-    const darkNavy = r < 28 && g < 32 && b < 42;
-    const greenFloor = g > 70 && g > r + 16 && g > b + 8;
-    const darkFloor = r < 45 && g < 75 && b < 45;
-    if (darkNavy || greenFloor || darkFloor) {
+    const darkNavy = r < 32 && g < 36 && b < 48;
+    if (darkNavy) {
       data[i + 3] = 0;
     }
   }
@@ -158,6 +156,19 @@ async function main() {
 
     await buildSheet(sourceBuffer, IDLE_FRAMES, idlePath, variantId);
     await buildSheet(sourceBuffer, MOVE_FRAMES, movePath, variantId);
+
+    const sample = await sharp(idlePath)
+      .extract({ left: 0, top: 0, width: FRAME_SIZE, height: FRAME_SIZE })
+      .ensureAlpha()
+      .raw()
+      .toBuffer();
+    let opaque = 0;
+    for (let i = 3; i < sample.length; i += 4) {
+      if (sample[i] > 12) opaque += 1;
+    }
+    if (opaque < 1200) {
+      console.warn(`Warning: ${variantId} idle frame looks mostly empty (${opaque} opaque px)`);
+    }
 
     manifest[variantId] = {
       idle: {

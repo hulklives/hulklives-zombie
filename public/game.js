@@ -159,7 +159,7 @@ const WAVE_EVENTS = [
 
 
 
-const SPRITE_VERSION = 29;
+const SPRITE_VERSION = 30;
 
 function loadSpriteSheet(relativePath, frameCount, frameWidth, frameHeight, meta = {}) {
   const sheet = { img: new Image(), frameCount, frameWidth, frameHeight, ready: false, ...meta };
@@ -347,13 +347,16 @@ function getZombieVariantSet(z) {
 
 function usesZombieVariantArt(z) {
   const set = getZombieVariantSet(z);
-  return Boolean(set?.move?.ready && set?.idle?.ready);
+  return Boolean(set?.move?.ready || set?.idle?.ready);
 }
 
 function getZombieDrawSheet(z) {
   const set = getZombieVariantSet(z);
   if (usesZombieVariantArt(z)) {
-    return (z.animTick || 0) > 0 ? set.move : set.idle;
+    const moving = (z.animTick || 0) > 0;
+    if (moving && set.move?.ready) return set.move;
+    if (set.idle?.ready) return set.idle;
+    return set.move?.ready ? set.move : set.idle;
   }
   return (z.animTick || 0) > 0 ? zombieSprites.move : zombieSprites.idle;
 }
