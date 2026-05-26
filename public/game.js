@@ -53,6 +53,7 @@ const ZOMBIE_EXTRA_CONTACT_DAMAGE_FACTOR = 0.32;
 const ZOMBIE_MAX_DAMAGE_PER_TICK_RATIO = 0.048;
 const SKILL_POINT_KILL_INTERVAL = 5;
 const WAVE_BOSS_INTERVAL = 10;
+const WAVE_BOSS_COUNT = 3;
 const WAVE_BOSS_BASE_SIZE = 138;
 const WAVE_BOSS_MAX_SIZE = 212;
 const WAVE_BOSS_SPEED_CAP_VS_PLAYER = [0.84, 0.91, 0.97];
@@ -5336,7 +5337,7 @@ function checkWaveMilestonesOnStart() {
   if (isWaveBossWave()) {
     const profile = getPlayerPowerProfile();
     showMilestone(
-      `👹 WAVE BOSS! Level ${profile.level} · ~${getWaveBossHitCount()} hits · large enemy incoming`
+      `👹 WAVE BOSSES x${WAVE_BOSS_COUNT}! Level ${profile.level} · ~${getWaveBossHitCount()} hits each`
     );
     return;
   }
@@ -5978,13 +5979,26 @@ function getWaveBossChaseSpeed(speed, phase, dist, size) {
   return capped * (WAVE_BOSS_CLOSE_CHASE_MULT + t * (1 - WAVE_BOSS_CLOSE_CHASE_MULT));
 }
 
-function getBossSpawnPoint(size) {
+function isValidBossSpawnPoint(x, y, size, existingSpawns = [], padding = 56) {
+  if (!isSafeBossSpawn(x, y, size, padding)) return false;
+  const cx = x + size / 2;
+  const cy = y + size / 2;
+  const minSep = size * 0.72 + 96;
+  for (const spawn of existingSpawns) {
+    const otherSize = spawn.size || size;
+    const dist = Math.hypot(cx - (spawn.x + otherSize / 2), cy - (spawn.y + otherSize / 2));
+    if (dist < minSep) return false;
+  }
+  return true;
+}
+
+function getBossSpawnPoint(size, existingSpawns = []) {
   const margin = 40;
   const pcx = player.x + PLAYER_SIZE / 2;
   const pcy = player.y + PLAYER_SIZE / 2;
   const minDist = getBossSpawnMinCenterDist(size);
 
-  for (let attempt = 0; attempt < 14; attempt++) {
+  for (let attempt = 0; attempt < 18; attempt++) {
     const edge = Math.floor(Math.random() * 4);
     let x;
     let y;
@@ -6007,7 +6021,33 @@ function getBossSpawnPoint(size) {
     y = clamp(y, margin, WORLD_HEIGHT - size - margin);
 
     const dist = Math.hypot(pcx - (x + size / 2), pcy - (y + size / 2));
-    if (dist >= minDist && isSafeBossSpawn(x, y, size)) return { x, y };
+    if (dist >= minDist && isValidBossSpawnPoint(x, y, size, existingSpawns)) return { x, y };
+  }
+
+  const baseAngle = Math.random() * Math.PI * 2;
+  for (let i = 0; i < Math.max(3, existingSpawns.length + 3); i++) {
+    const angle = baseAngle + ((Math.PI * 2) / Math.max(3, WAVE_BOSS_COUNT)) * i;
+    let x = pcx - size / 2 + Math.cos(angle) * minDist;
+    let y = pcy - size / 2 + Math.sin(angle) * minDist;
+    x = clamp(x, margin, WORLD_WIDTH - size - margin);
+    y = clamp(y, margin, WORLD_HEIGHT - size - margin);
+
+    if (!isSafeBossSpawn(x, y, size)) {
+      let dx = x + size / 2 - pcx;
+      let dy = y + size / 2 - pcy;
+      const d = Math.hypot(dx, dy);
+      if (d < 1) {
+        dx = Math.cos(angle);
+        dy = Math.sin(angle);
+      } else {
+        dx /= d;
+        dy /= d;
+      }
+      x = clamp(pcx - size / 2 + dx * minDist, margin, WORLD_WIDTH - size - margin);
+      y = clamp(pcy - size / 2 + dy * minDist, margin, WORLD_HEIGHT - size - margin);
+    }
+
+    if (isValidBossSpawnPoint(x, y, size, existingSpawns)) return { x, y };
   }
 
   const angle = Math.random() * Math.PI * 2;
@@ -6015,31 +6055,13 @@ function getBossSpawnPoint(size) {
   let y = pcy - size / 2 + Math.sin(angle) * minDist;
   x = clamp(x, margin, WORLD_WIDTH - size - margin);
   y = clamp(y, margin, WORLD_HEIGHT - size - margin);
-
-  if (!isSafeBossSpawn(x, y, size)) {
-    let dx = x + size / 2 - pcx;
-    let dy = y + size / 2 - pcy;
-    const d = Math.hypot(dx, dy);
-    if (d < 1) {
-      dx = Math.cos(angle);
-      dy = Math.sin(angle);
-    } else {
-      dx /= d;
-      dy /= d;
-    }
-    x = clamp(pcx - size / 2 + dx * minDist, margin, WORLD_WIDTH - size - margin);
-    y = clamp(pcy - size / 2 + dy * minDist, margin, WORLD_HEIGHT - size - margin);
-  }
-
   return { x, y };
 }
 
-function spawnWaveBoss() {
-  const stats = getWaveBossStats();
+function createWaveBossZombie(stats, spawnX, spawnY) {
   const size = stats.size;
   const playerCenterX = player.x + PLAYER_SIZE / 2;
   const playerCenterY = player.y + PLAYER_SIZE / 2;
-  const { x: spawnX, y: spawnY } = getBossSpawnPoint(size);
   const toPlayerX = playerCenterX - (spawnX + size / 2);
   const toPlayerY = playerCenterY - (spawnY + size / 2);
 
@@ -6061,6 +6083,18 @@ function spawnWaveBoss() {
     skinStyle: pickZombieSkinStyle()
   });
   initWaveBossAbilityTracking(zombies[zombies.length - 1]);
+}
+
+function spawnWaveBoss(count = WAVE_BOSS_COUNT) {
+  const stats = getWaveBossStats();
+  const size = stats.size;
+  const placed = [];
+
+  for (let i = 0; i < count; i++) {
+    const { x: spawnX, y: spawnY } = getBossSpawnPoint(size, placed);
+    placed.push({ x: spawnX, y: spawnY, size });
+    createWaveBossZombie(stats, spawnX, spawnY);
+  }
 }
 
 const FREEPLAY_BASE_SPAWN_INTERVAL = 78;
@@ -6384,7 +6418,7 @@ function spawnWave() {
   const waveBossActive = isWaveBossWave();
   let count = getWaveZombieCount();
   if (waveBossActive) {
-    count = Math.max(4, Math.floor(count * 0.58));
+    count = Math.max(3, Math.floor(count * 0.42));
   }
 
   const event = getCurrentEvent();
