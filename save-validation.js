@@ -86,14 +86,19 @@ function getAdminSkillPointBonus(data) {
   return clampInt(data?.adminSpBonus, 0, 999999999);
 }
 
+function getDailySkillPointBonus(data) {
+  return clampInt(data?.dailySpBonus, 0, 999999999);
+}
+
 function computeSkillPointBudget(existing, merged) {
   const existingSpent = computeSpentSkillPoints(existing);
   const existingHeld = clampInt(existing.skillPoints, 0, 999999999);
   const theoretical = computeTheoreticalMaxEarnedSkillPoints(merged.kills, merged.bestWave);
   const adminBonus = Math.max(getAdminSkillPointBonus(existing), getAdminSkillPointBonus(merged));
+  const dailyBonus = Math.max(getDailySkillPointBonus(existing), getDailySkillPointBonus(merged));
 
   return (
-    Math.max(Math.ceil(theoretical * 1.6), existingSpent + existingHeld + 100) + adminBonus
+    Math.max(Math.ceil(theoretical * 1.6), existingSpent + existingHeld + 100) + adminBonus + dailyBonus
   );
 }
 
@@ -160,6 +165,31 @@ function sanitizeMonthlyProgress(raw, kills) {
   };
 }
 
+function sanitizeDailyProgressFields(raw) {
+  const counters = {
+    runKillsBest: 0,
+    runWaveBest: 0,
+    waveBossKills: 0,
+    eliteKills: 0,
+    runKillsTotal: 0,
+    wavesCleared: 0
+  };
+  const source = raw?.counters && typeof raw.counters === "object" ? raw.counters : {};
+  for (const key of Object.keys(counters)) {
+    counters[key] = clampInt(source[key], 0, 999999999);
+  }
+
+  return {
+    dayKey: String(raw?.dayKey || "").slice(0, 10),
+    counters,
+    claimed: [
+      ...new Set(
+        (Array.isArray(raw?.claimed) ? raw.claimed : []).map((id) => String(id).slice(0, 24))
+      )
+    ].slice(0, 12)
+  };
+}
+
 function sanitizeSaveShape(data) {
   const weapons = sanitizeWeaponState(data);
   const kills = clampInt(data.kills, 0, 999999999);
@@ -188,6 +218,8 @@ function sanitizeSaveShape(data) {
       totalXp
     }),
     monthlyProgress: sanitizeMonthlyProgress(data.monthlyProgress, kills),
+    dailyProgress: sanitizeDailyProgressFields(data.dailyProgress),
+    dailySpBonus: getDailySkillPointBonus(data),
     completedMonthlyAchievements: [
       ...new Set(
         (Array.isArray(data.completedMonthlyAchievements)
@@ -251,6 +283,7 @@ function mergePlayerSaveSecure(existing, incoming) {
     bestWave: Math.max(clampInt(ex.bestWave, 0, 999999999), clampInt(inc.bestWave, 0, 999999999)),
     skillPoints: clampInt(inc.skillPoints, 0, 999999999),
     adminSpBonus: Math.max(getAdminSkillPointBonus(ex), getAdminSkillPointBonus(inc)),
+    dailySpBonus: getDailySkillPointBonus(ex),
     nextSkillPointKill: Math.max(
       clampInt(ex.nextSkillPointKill, SKILL_POINT_KILL_INTERVAL, 999999999),
       clampInt(inc.nextSkillPointKill, SKILL_POINT_KILL_INTERVAL, 999999999)
@@ -272,6 +305,7 @@ function mergePlayerSaveSecure(existing, incoming) {
       ])
     ],
     monthlyProgress: mergeMonthlyProgressForServer(ex, inc),
+    dailyProgress: sanitizeDailyProgressFields(ex.dailyProgress),
     completedMonthlyAchievements: [
       ...new Set([
         ...(Array.isArray(ex.completedMonthlyAchievements) ? ex.completedMonthlyAchievements : []),
@@ -394,6 +428,7 @@ module.exports = {
   clampInt,
   computeSkillPointBudget,
   getAdminSkillPointBonus,
+  getDailySkillPointBonus,
   computeSpentSkillPoints,
   createRateLimiter,
   filterValidAchievements,

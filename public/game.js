@@ -1571,6 +1571,7 @@ function onZombieKilled(zombie) {
   }
 
   registerMonthlyKill();
+  if (typeof registerDailyRunKill === "function") registerDailyRunKill(zombie);
   checkAndUnlockAchievements();
   checkAndUnlockMonthlyAchievement();
   applyRunLifestealOnKill();
@@ -2144,6 +2145,7 @@ function handleSessionExpired(message = "Session expired. Log in again.") {
   closeSettingsMenu();
   closeAchievementsMenu();
   if (typeof closeFriendsMenu === "function") closeFriendsMenu();
+  if (typeof closeDailyChallengesMenu === "function") closeDailyChallengesMenu();
   closeFeedbackMenu();
   closeFeedbackInboxMenu();
   closeRunModifierPick();
@@ -2384,6 +2386,7 @@ async function logoutAccount() {
   hideTutorialOverlay();
   hideCenterHud();
   if (typeof closeFriendsMenu === "function") closeFriendsMenu();
+  if (typeof closeDailyChallengesMenu === "function") closeDailyChallengesMenu();
   showAuthScreen("login");
   setAuthError("");
   updateUI();
@@ -2432,6 +2435,7 @@ const START_MENU_MODAL_IDS = [
   "shop-upgrade-modal",
   "achievements-modal",
   "friends-modal",
+  "daily-challenges-modal",
   "settings-modal",
   "feedback-modal",
   "feedback-inbox-modal",
@@ -2467,6 +2471,7 @@ function restoreStartMenuAfterModal() {
 function syncAuthSidePanels() {
   if (typeof refreshGlobalChat === "function") refreshGlobalChat(true);
   if (typeof refreshFriendsPanel === "function") refreshFriendsPanel(true);
+  if (typeof refreshDailyChallenges === "function") refreshDailyChallenges(true);
   if (typeof initCoopLobbyConnection === "function") initCoopLobbyConnection();
 }
 
@@ -4438,6 +4443,7 @@ function onWaveCleared(clearedWave) {
   }
 
   saveProgress();
+  if (typeof registerDailyWaveClear === "function") registerDailyWaveClear(clearedWave);
   checkAndUnlockAchievements();
 }
 
@@ -6122,6 +6128,7 @@ async function beginRun(mode = "campaign") {
   }
   lastGameMode = gameMode;
   runKills = 0;
+  if (typeof resetRunDailyStats === "function") resetRunDailyStats();
   freeplaySpawnTick = 0;
   freeplayRunSeconds = 0;
   freeplayPhase = "steady";
@@ -6316,6 +6323,7 @@ function returnToMainMenu() {
   isMouseDown = false;
 
   saveProgress({ forceServer: true, quiet: true });
+  if (typeof submitDailyRunProgress === "function") submitDailyRunProgress();
   updateUI();
   showStartMenu();
 }
@@ -6333,6 +6341,7 @@ function goToMainMenuFromGameOver() {
   closeAchievementsMenu();
 
   saveProgress({ forceServer: true, quiet: true });
+  if (typeof submitDailyRunProgress === "function") submitDailyRunProgress();
   updateUI();
   showStartMenu();
 }
@@ -6396,6 +6405,8 @@ function finalizeGameOver() {
   }
 
   updateUI();
+
+  if (typeof submitDailyRunProgress === "function") submitDailyRunProgress();
 
   if (gameOverOverlay) {
     gameOverOverlay.style.display = "flex";
@@ -7652,6 +7663,15 @@ async function init() {
     friendsModal.addEventListener("click", (event) => {
       if (event.target === friendsModal && typeof closeFriendsMenu === "function") {
         closeFriendsMenu();
+      }
+    });
+  }
+
+  const dailyModal = document.getElementById("daily-challenges-modal");
+  if (dailyModal) {
+    dailyModal.addEventListener("click", (event) => {
+      if (event.target === dailyModal && typeof closeDailyChallengesMenu === "function") {
+        closeDailyChallengesMenu();
       }
     });
   }

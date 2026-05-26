@@ -60,6 +60,12 @@ const {
   sendFriendRequest
 } = require("./friends");
 const {
+  buildDailyChallengePayload,
+  claimDailyChallenge,
+  getDayKey,
+  mergeRunIntoDailyProgress
+} = require("./daily-challenges");
+const {
   deleteSession,
   deleteSessionsForUsernameKey,
   findSaveKeyForAccount,
@@ -429,6 +435,65 @@ app.get("/save", requireAuthAndAccess, (req, res) => {
 
 app.get("/leaderboard", (req, res) => {
   res.json(buildLeaderboard(req.query.limit));
+});
+
+app.get("/api/daily-challenges", requireAuthAndAccess, (req, res) => {
+  const { key, data } = getSaveForAccount(req.auth.displayName);
+  const payload = buildDailyChallengePayload(data || {}, getDayKey());
+  res.json({ ok: true, ...payload, skillPoints: Number(data?.skillPoints || 0) });
+});
+
+app.post("/api/daily-challenges/sync-run", requireAuthAndAccess, (req, res) => {
+  const playerName = req.auth.displayName;
+  const { key, data: existing } = getSaveForAccount(playerName);
+  const dayKey = getDayKey();
+  const merged = mergeRunIntoDailyProgress(existing?.dailyProgress, req.body?.run || req.body, dayKey);
+
+  if (!merged.ok) {
+    return res.status(400).json({ error: merged.error });
+  }
+
+  const nextSave = sanitizeSaveShape({
+    ...(existing || {}),
+    dailyProgress: merged.progress
+  });
+
+  saves[key] = nextSave;
+  saveSaves();
+
+  const payload = buildDailyChallengePayload(nextSave, dayKey);
+  res.json({
+    ok: true,
+    message: "Daily progress updated.",
+    ...payload,
+    skillPoints: Number(nextSave.skillPoints || 0)
+  });
+});
+
+app.post("/api/daily-challenges/claim", requireAuthAndAccess, (req, res) => {
+  const playerName = req.auth.displayName;
+  const challengeId = String(req.body?.challengeId || "").trim();
+  if (!challengeId) {
+    return res.status(400).json({ error: "Missing challenge id." });
+  }
+
+  const { key, data: existing } = getSaveForAccount(playerName);
+  const result = claimDailyChallenge(existing || {}, challengeId, getDayKey());
+  if (!result.ok) {
+    return res.status(400).json({ error: result.error });
+  }
+
+  saves[key] = result.save;
+  saveSaves();
+
+  const payload = buildDailyChallengePayload(result.save, getDayKey());
+  res.json({
+    ok: true,
+    message: result.message,
+    grantedSp: result.grantedSp,
+    skillPoints: Number(result.save.skillPoints || 0),
+    ...payload
+  });
 });
 
 app.get("/api/friends", requireAuthAndAccess, (req, res) => {
