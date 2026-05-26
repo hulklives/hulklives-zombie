@@ -11,7 +11,4 @@ Player and zombie sprites:
 Source files are stored under public/images/sources/ for reference.
 
 Floor background texture:
-  Horror Texture Pack (Horror Floor 06)
-  by Screaming Brain Studios
-  https://screamingbrainstudios.itch.io/horror-texture-pack
-  License: CC0 1.0
+  Custom flesh texture (user provided)

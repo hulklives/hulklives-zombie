@@ -43,6 +43,10 @@ const HP_PICKUP_SPAWN_COOLDOWN_MS = 20000;
 const HP_PICKUP_LOW_HP_RATIO = 0.4;
 const HP_PICKUP_HEAL_RATIO = 0.28;
 const ZOMBIE_DAMAGE_TUNE = 0.58;
+const ZOMBIE_SPEED_TUNE = 1.26;
+const PROGRESSION_UPGRADED_NORMAL_TTK = 5.15;
+const PROGRESSION_MAX_STRONG_RATIO = 0.3;
+const PROGRESSION_MIN_STRONG_RATIO = 0.08;
 const ZOMBIE_SWARM_EXTRA_PER_CONTACT = 0.08;
 const ZOMBIE_FULL_DAMAGE_CONTACTS = 4;
 const ZOMBIE_EXTRA_CONTACT_DAMAGE_FACTOR = 0.32;
@@ -51,6 +55,8 @@ const SKILL_POINT_KILL_INTERVAL = 5;
 const WAVE_BOSS_INTERVAL = 10;
 const WAVE_BOSS_BASE_SIZE = 138;
 const WAVE_BOSS_MAX_SIZE = 212;
+const WAVE_BOSS_SPEED_CAP_VS_PLAYER = [0.84, 0.91, 0.97];
+const WAVE_BOSS_CLOSE_CHASE_MULT = 0.58;
 const WAVE_BOSS_SP_REWARD = 30;
 const WAVE_BOSS_XP_REWARD = 150;
 
@@ -191,11 +197,11 @@ function loadStaticImage(relativePath, meta = {}) {
 }
 
 const TERRAIN_TILE = 48;
-const BACKGROUND_VERSION = 3;
-const BACKGROUND_TILE = 256;
+const BACKGROUND_VERSION = 4;
+const BACKGROUND_TILE = 512;
 let groundCache = { ready: false, canvas: null };
 const backgroundFloor = new Image();
-backgroundFloor.src = `images/background/horror-floor.png?v=${BACKGROUND_VERSION}`;
+backgroundFloor.src = `images/background/flesh-floor.png?v=${BACKGROUND_VERSION}`;
 backgroundFloor.onload = () => {
   groundCache.ready = false;
 };
@@ -209,56 +215,106 @@ function hash2D(x, y, seed) {
   return n - Math.floor(n);
 }
 
-const ARENA_CORNER_BUSHES = [
-  { x: 105, y: 105, radius: 62 },
-  { x: WORLD_WIDTH - 105, y: 105, radius: 58 },
-  { x: 105, y: WORLD_HEIGHT - 105, radius: 64 },
-  { x: WORLD_WIDTH - 105, y: WORLD_HEIGHT - 105, radius: 56 }
-];
+const ARENA_FOREST_BUSHES = (() => {
+  const bushes = [];
 
-const ARENA_SCATTER_PROPS = (() => {
-  const props = [];
+  function pushCluster(cx, cy, clusterSeed, count, spread, minRadius, maxRadius) {
+    for (let i = 0; i < count; i += 1) {
+      const angle = hash2D(clusterSeed, i, 801) * Math.PI * 2;
+      const dist = hash2D(clusterSeed, i, 802) * spread;
+      bushes.push({
+        x: cx + Math.cos(angle) * dist,
+        y: cy + Math.sin(angle) * dist,
+        radius: minRadius + hash2D(clusterSeed, i, 803) * (maxRadius - minRadius),
+        rot: hash2D(clusterSeed, i, 804) * Math.PI * 2,
+        alpha: 0.82 + hash2D(clusterSeed, i, 805) * 0.16
+      });
+    }
+  }
+
+  const corners = [
+    { x: 92, y: 92 },
+    { x: WORLD_WIDTH - 92, y: 92 },
+    { x: 92, y: WORLD_HEIGHT - 92 },
+    { x: WORLD_WIDTH - 92, y: WORLD_HEIGHT - 92 }
+  ];
+  for (let c = 0; c < corners.length; c += 1) {
+    const count = 8 + Math.floor(hash2D(c, 0, 800) * 4);
+    pushCluster(corners[c].x, corners[c].y, c + 10, count, 96, 52, 92);
+  }
+
+  const clusterCenters = [];
   let seed = 0;
-  while (props.length < 18 && seed < 400) {
+  while (clusterCenters.length < 11 && seed < 220) {
+    const cx = 170 + hash2D(seed, 1, 810) * (WORLD_WIDTH - 340);
+    const cy = 170 + hash2D(seed, 2, 811) * (WORLD_HEIGHT - 340);
+    seed += 1;
+    if (Math.hypot(cx - WORLD_WIDTH / 2, cy - WORLD_HEIGHT / 2) < 340) continue;
+    if (clusterCenters.some((center) => Math.hypot(center.x - cx, center.y - cy) < 240)) continue;
+    clusterCenters.push({ x: cx, y: cy });
+  }
+
+  for (let c = 0; c < clusterCenters.length; c += 1) {
+    const { x, y } = clusterCenters[c];
+    const count = 6 + Math.floor(hash2D(c, 9, 812) * 5);
+    pushCluster(x, y, c + 40, count, 78, 42, 76);
+  }
+
+  return bushes.sort((a, b) => b.radius - a.radius);
+})();
+
+const ARENA_SCATTER_STONES = (() => {
+  const stones = [];
+  let seed = 0;
+  while (stones.length < 14 && seed < 400) {
     const x = 150 + hash2D(seed, 1, 820) * (WORLD_WIDTH - 300);
     const y = 150 + hash2D(seed, 2, 821) * (WORLD_HEIGHT - 300);
     seed += 1;
     if (Math.hypot(x - WORLD_WIDTH / 2, y - WORLD_HEIGHT / 2) < 270) continue;
-    props.push({
+    if (ARENA_FOREST_BUSHES.some((bush) => Math.hypot(bush.x - x, bush.y - y) < bush.radius * 0.75)) continue;
+    if (hash2D(seed, 3, 822) < 0.42) continue;
+    stones.push({
       x,
       y,
-      kind: hash2D(seed, 3, 822) < 0.58 ? "bush" : "stone",
-      radius: 16 + hash2D(seed, 4, 823) * 20,
       alpha: 0.74 + hash2D(seed, 5, 824) * 0.2
     });
   }
-  return props;
+  return stones;
 })();
 
-function drawTopDownBush(drawCtx, x, y, radius, theme) {
+function drawTopDownBush(drawCtx, x, y, radius, theme, rot = 0) {
   drawCtx.save();
   drawCtx.translate(x, y);
+  drawCtx.rotate(rot);
 
-  drawCtx.fillStyle = "rgba(0,0,0,0.2)";
+  drawCtx.fillStyle = "rgba(0,0,0,0.24)";
   drawCtx.beginPath();
-  drawCtx.ellipse(radius * 0.06, radius * 0.16, radius * 0.52, radius * 0.2, 0.25, 0, Math.PI * 2);
+  drawCtx.ellipse(radius * 0.06, radius * 0.18, radius * 0.58, radius * 0.22, 0.25, 0, Math.PI * 2);
   drawCtx.fill();
 
   drawCtx.fillStyle = "rgba(88, 58, 34, 0.95)";
   drawCtx.beginPath();
-  drawCtx.ellipse(0, radius * 0.05, radius * 0.12, radius * 0.15, 0, 0, Math.PI * 2);
+  drawCtx.ellipse(0, radius * 0.06, radius * 0.14, radius * 0.17, 0, 0, Math.PI * 2);
   drawCtx.fill();
   drawCtx.strokeStyle = "rgba(0,0,0,0.28)";
-  drawCtx.lineWidth = 1.1;
+  drawCtx.lineWidth = Math.max(1.1, radius * 0.018);
   drawCtx.stroke();
 
   const lobes = [
-    { ox: -radius * 0.34, oy: -radius * 0.16, rx: radius * 0.34, ry: radius * 0.26, rot: -0.45, shade: theme.grassDark },
-    { ox: radius * 0.3, oy: -radius * 0.2, rx: radius * 0.3, ry: radius * 0.24, rot: 0.4, shade: theme.grass },
-    { ox: 0.04, oy: -radius * 0.36, rx: radius * 0.36, ry: radius * 0.28, rot: 0.12, shade: theme.grassLight },
-    { ox: -radius * 0.06, oy: -radius * 0.06, rx: radius * 0.26, ry: radius * 0.2, rot: -0.2, shade: theme.grassDark },
-    { ox: radius * 0.1, oy: -radius * 0.04, rx: radius * 0.22, ry: radius * 0.18, rot: 0.55, shade: theme.grass }
+    { ox: -radius * 0.38, oy: -radius * 0.12, rx: radius * 0.38, ry: radius * 0.3, rot: -0.45, shade: theme.grassDark },
+    { ox: radius * 0.34, oy: -radius * 0.16, rx: radius * 0.34, ry: radius * 0.28, rot: 0.4, shade: theme.grass },
+    { ox: 0.04, oy: -radius * 0.4, rx: radius * 0.4, ry: radius * 0.32, rot: 0.12, shade: theme.grassLight },
+    { ox: -radius * 0.08, oy: -radius * 0.04, rx: radius * 0.3, ry: radius * 0.24, rot: -0.2, shade: theme.grassDark },
+    { ox: radius * 0.12, oy: -radius * 0.02, rx: radius * 0.26, ry: radius * 0.22, rot: 0.55, shade: theme.grass }
   ];
+
+  if (radius > 36) {
+    lobes.push(
+      { ox: -radius * 0.5, oy: radius * 0.08, rx: radius * 0.3, ry: radius * 0.24, rot: -0.15, shade: theme.grassDark },
+      { ox: radius * 0.48, oy: radius * 0.06, rx: radius * 0.28, ry: radius * 0.22, rot: 0.28, shade: theme.grassDark },
+      { ox: -radius * 0.18, oy: radius * 0.14, rx: radius * 0.24, ry: radius * 0.18, rot: 0.62, shade: theme.grass }
+    );
+  }
 
   for (const lobe of lobes) {
     drawCtx.save();
@@ -270,7 +326,7 @@ function drawTopDownBush(drawCtx, x, y, radius, theme) {
     drawCtx.ellipse(0, 0, lobe.rx, lobe.ry, 0, 0, Math.PI * 2);
     drawCtx.fill();
     drawCtx.strokeStyle = "rgba(0,0,0,0.14)";
-    drawCtx.lineWidth = 1;
+    drawCtx.lineWidth = Math.max(1, radius * 0.014);
     drawCtx.stroke();
     drawCtx.restore();
   }
@@ -352,17 +408,17 @@ function buildGroundCanvas(theme) {
     }
 
     const wash = g.createRadialGradient(cx, cy, maxR * 0.04, cx, cy, maxR);
-    wash.addColorStop(0, theme.groundLight);
-    wash.addColorStop(0.45, theme.groundMid);
-    wash.addColorStop(1, theme.groundDark);
+    wash.addColorStop(0, "rgba(90,12,12,0.06)");
+    wash.addColorStop(0.45, "rgba(45,6,6,0.14)");
+    wash.addColorStop(1, "rgba(12,0,0,0.32)");
     g.fillStyle = wash;
-    g.globalAlpha = 0.88;
+    g.globalAlpha = 1;
     g.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
     g.globalAlpha = 1;
 
-    g.strokeStyle = theme.grid;
+    g.strokeStyle = "rgba(40,8,8,0.35)";
     g.lineWidth = 1;
-    g.globalAlpha = 0.07;
+    g.globalAlpha = 0.05;
     for (let x = 0; x <= WORLD_WIDTH; x += 128) {
       g.beginPath();
       g.moveTo(x, 0);
@@ -411,7 +467,9 @@ function buildGroundCanvas(theme) {
     g.globalAlpha = 1;
   }
 
-  paintGroundDecor(g, theme);
+  if (!backgroundTextureReady()) {
+    paintGroundDecor(g, theme);
+  }
 
   const vignette = g.createRadialGradient(cx, cy, maxR * 0.22, cx, cy, maxR);
   vignette.addColorStop(0, "rgba(0,0,0,0)");
@@ -670,15 +728,13 @@ let playerAnimTick = 0;
 
 const BULLET_SIZE = 7;
 
-const BASE_SHOOT_VOLUME = 0.2;
+const BASE_SHOOT_VOLUME = 0.24;
 const BASE_LEVELUP_VOLUME = 0.52;
 
 let audioCtx = null;
 
 let masterGain = null;
 let levelUpGain = null;
-
-let gunshotFilter = null;
 
 
 
@@ -691,136 +747,74 @@ function ensureAudio() {
   audioCtx = new AudioContextClass();
   masterGain = audioCtx.createGain();
   applyAudioSettings();
-
-  gunshotFilter = audioCtx.createBiquadFilter();
-  gunshotFilter.type = "lowpass";
-  gunshotFilter.frequency.value = 1350;
-  gunshotFilter.Q.value = 0.45;
-
-  gunshotFilter.connect(masterGain);
   masterGain.connect(audioCtx.destination);
 
   levelUpGain = audioCtx.createGain();
   levelUpGain.connect(audioCtx.destination);
   applyAudioSettings();
+  preloadGameSfx();
 }
 
 function resumeAudio() {
   ensureAudio();
+  if (typeof preloadGameSfx === "function") preloadGameSfx();
   if (audioCtx && audioCtx.state === "suspended") {
     audioCtx.resume().catch(() => {});
   }
 }
 
-function playGunshotNow() {
-  if (!audioCtx || !masterGain || !gunshotFilter || audioCtx.state !== "running") return;
+const WEAPON_SHOT_GAPS = {
+  pistol: 105,
+  smg: 78,
+  shotgun: 260,
+  rifle: 180
+};
 
-  const now = audioCtx.currentTime;
-  const output = gunshotFilter;
+const WEAPON_SHOT_VOLUMES = {
+  pistol: 0.52,
+  smg: 0.44,
+  shotgun: 0.58,
+  rifle: 0.54
+};
 
-  const pew = audioCtx.createOscillator();
-  pew.type = "sine";
-  pew.frequency.setValueAtTime(480 + Math.random() * 30, now);
-  pew.frequency.exponentialRampToValueAtTime(260, now + 0.05);
-
-  const pewGain = audioCtx.createGain();
-  pewGain.gain.setValueAtTime(0.001, now);
-  pewGain.gain.exponentialRampToValueAtTime(0.1, now + 0.006);
-  pewGain.gain.exponentialRampToValueAtTime(0.001, now + 0.055);
-
-  pew.connect(pewGain);
-  pewGain.connect(output);
-  pew.start(now);
-  pew.stop(now + 0.06);
-
-  const thump = audioCtx.createOscillator();
-  thump.type = "sine";
-  thump.frequency.setValueAtTime(90, now);
-  thump.frequency.exponentialRampToValueAtTime(60, now + 0.04);
-
-  const thumpGain = audioCtx.createGain();
-  thumpGain.gain.setValueAtTime(0.001, now);
-  thumpGain.gain.exponentialRampToValueAtTime(0.045, now + 0.008);
-  thumpGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
-
-  thump.connect(thumpGain);
-  thumpGain.connect(output);
-  thump.start(now);
-  thump.stop(now + 0.055);
-  if (typeof enhanceGunshotNow === "function") enhanceGunshotNow();
-}
+const WEAPON_SHOT_RATES = {
+  pistol: 0.9,
+  smg: 0.92,
+  shotgun: 0.88,
+  rifle: 0.86
+};
 
 function playGunshot() {
-  ensureAudio();
-  if (!audioCtx || !masterGain) return;
-
-  if (audioCtx.state === "suspended") {
-    audioCtx.resume().then(playGunshotNow).catch(() => {});
-    return;
-  }
-
-  playGunshotNow();
+  // Skottljud av — visuell feedback via muzzle flash + recoil räcker.
 }
 
 function playLevelUpNow() {
   if (!audioCtx || !levelUpGain || audioCtx.state !== "running") return;
 
+  if (typeof playGameSfx === "function" && playGameSfx("level-up", { volume: 0.58, bus: "levelUp" })) {
+    return;
+  }
+
   const now = audioCtx.currentTime;
   const output = levelUpGain;
-  const notes = [523.25, 659.25, 783.99, 1046.5];
+  const notes = [392, 523.25, 659.25];
 
   notes.forEach((freq, index) => {
-    const t = now + index * 0.09;
+    const t = now + index * 0.07;
     const osc = audioCtx.createOscillator();
-    osc.type = "triangle";
+    osc.type = "sine";
     osc.frequency.setValueAtTime(freq, t);
-
-    const bell = audioCtx.createOscillator();
-    bell.type = "sine";
-    bell.frequency.setValueAtTime(freq * 2, t);
 
     const gain = audioCtx.createGain();
     gain.gain.setValueAtTime(0.001, t);
-    gain.gain.exponentialRampToValueAtTime(0.38, t + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.08, t + 0.12);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.38);
-
-    const bellGain = audioCtx.createGain();
-    bellGain.gain.setValueAtTime(0.001, t);
-    bellGain.gain.exponentialRampToValueAtTime(0.12, t + 0.015);
-    bellGain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+    gain.gain.exponentialRampToValueAtTime(0.12, t + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
 
     osc.connect(gain);
-    bell.connect(bellGain);
     gain.connect(output);
-    bellGain.connect(output);
     osc.start(t);
-    bell.start(t);
-    osc.stop(t + 0.4);
-    bell.stop(t + 0.28);
+    osc.stop(t + 0.24);
   });
-
-  const finish = now + notes.length * 0.09 + 0.02;
-  const finale = audioCtx.createOscillator();
-  finale.type = "triangle";
-  finale.frequency.setValueAtTime(1046.5, finish);
-
-  const finaleBell = audioCtx.createOscillator();
-  finaleBell.type = "sine";
-  finaleBell.frequency.setValueAtTime(2093, finish);
-
-  const finaleGain = audioCtx.createGain();
-  finaleGain.gain.setValueAtTime(0.001, finish);
-  finaleGain.gain.exponentialRampToValueAtTime(0.42, finish + 0.025);
-  finaleGain.gain.exponentialRampToValueAtTime(0.001, finish + 0.45);
-
-  finale.connect(finaleGain);
-  finaleBell.connect(finaleGain);
-  finaleGain.connect(output);
-  finale.start(finish);
-  finaleBell.start(finish);
-  finale.stop(finish + 0.48);
-  finaleBell.stop(finish + 0.48);
 }
 
 function playLevelUp() {
@@ -835,27 +829,49 @@ function playLevelUp() {
   playLevelUpNow();
 }
 
-const BASE_MUSIC_VOLUME = 0.16;
-const SUMMER_PROGRESSION = [
-  {
-    notes: [261.63, 329.63, 392],
-    bass: 65.41,
-    pluck: [261.63, 329.63, 392, 329.63, 261.63, 392]
-  },
-  {
-    notes: [196, 246.94, 293.66],
-    bass: 98,
-    pluck: [196, 246.94, 293.66, 246.94, 196, 293.66]
-  },
+const BASE_MUSIC_VOLUME = 0.14;
+const SURVIVAL_SECTIONS = [
   {
     notes: [220, 261.63, 329.63],
-    bass: 110,
-    pluck: [220, 261.63, 329.63, 261.63, 220, 329.63]
+    bass: 55,
+    arp: [220, 261.63, 329.63, 261.63, 220, 0, 329.63, 0],
+    arpMs: 680,
+    holdMs: 15000
   },
   {
     notes: [174.61, 220, 261.63],
-    bass: 87.31,
-    pluck: [174.61, 220, 261.63, 220, 174.61, 261.63]
+    bass: 43.65,
+    arp: [174.61, 220, 261.63, 220, 0, 174.61, 261.63, 220],
+    arpMs: 720,
+    holdMs: 13200
+  },
+  {
+    notes: [146.83, 174.61, 220],
+    bass: 36.7,
+    arp: [146.83, 174.61, 220, 174.61, 146.83, 0, 0, 220],
+    arpMs: 760,
+    holdMs: 14800
+  },
+  {
+    notes: [164.81, 196, 246.94],
+    bass: 41.2,
+    arp: [164.81, 196, 246.94, 196, 164.81, 246.94, 0, 196],
+    arpMs: 640,
+    holdMs: 12600
+  },
+  {
+    notes: [196, 233.08, 293.66],
+    bass: 49,
+    arp: [196, 233.08, 293.66, 233.08, 196, 0, 293.66, 233.08],
+    arpMs: 610,
+    holdMs: 11800
+  },
+  {
+    notes: [130.81, 164.81, 196],
+    bass: 32.7,
+    arp: [130.81, 164.81, 196, 0, 164.81, 130.81, 0, 196],
+    arpMs: 820,
+    holdMs: 16000
   }
 ];
 
@@ -865,8 +881,26 @@ let musicPadVoices = [];
 let musicBassOsc = null;
 let musicTimers = [];
 let musicPlaying = false;
-let musicChordIndex = 0;
-let musicPluckStep = 0;
+let musicSectionIndex = 0;
+let musicArpStep = 0;
+
+function getMusicIntensity() {
+  if (typeof gameRunning !== "undefined" && !gameRunning) return 0.32;
+  if (typeof isFreeplayMode === "function" && isFreeplayMode()) {
+    const seconds = typeof freeplayRunSeconds === "number" ? freeplayRunSeconds : 0;
+    return clamp(0.42 + seconds * 0.0018, 0.42, 0.92);
+  }
+  const w = typeof wave === "number" ? wave : 1;
+  const horde = typeof zombies !== "undefined" && Array.isArray(zombies) ? zombies.length : 0;
+  return clamp(0.38 + w * 0.016 + Math.min(horde, 22) * 0.011, 0.38, 1);
+}
+
+function updateMusicFilterForIntensity() {
+  if (!musicFilter) return;
+  const intensity = getMusicIntensity();
+  musicFilter.frequency.value = 760 + intensity * 520;
+  musicFilter.Q.value = 0.35 + intensity * 0.18;
+}
 
 function rampMusicVolume(target, seconds) {
   if (!audioCtx || !musicGain) return;
@@ -876,55 +910,116 @@ function rampMusicVolume(target, seconds) {
   musicGain.gain.linearRampToValueAtTime(target, now + seconds);
 }
 
-function getSummerChord() {
-  return SUMMER_PROGRESSION[musicChordIndex];
+function getMusicSection() {
+  return SURVIVAL_SECTIONS[musicSectionIndex];
 }
 
-function playSummerPluck(freq) {
-  if (!audioCtx || !musicFilter || !musicPlaying) return;
+function playMusicArp(freq, intensity) {
+  if (!audioCtx || !musicFilter || !musicPlaying || !freq) return;
 
   const now = audioCtx.currentTime;
   const osc = audioCtx.createOscillator();
   osc.type = "triangle";
   osc.frequency.setValueAtTime(freq, now);
 
-  const sparkle = audioCtx.createOscillator();
-  sparkle.type = "sine";
-  sparkle.frequency.setValueAtTime(freq * 2, now);
+  const sub = audioCtx.createOscillator();
+  sub.type = "sine";
+  sub.frequency.setValueAtTime(freq * 0.5, now);
 
   const gain = audioCtx.createGain();
+  const peak = 0.024 + intensity * 0.022;
   gain.gain.setValueAtTime(0.001, now);
-  gain.gain.exponentialRampToValueAtTime(0.05, now + 0.03);
-  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+  gain.gain.exponentialRampToValueAtTime(peak, now + 0.028);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.42 + (1 - intensity) * 0.18);
 
-  const sparkleGain = audioCtx.createGain();
-  sparkleGain.gain.setValueAtTime(0.001, now);
-  sparkleGain.gain.exponentialRampToValueAtTime(0.012, now + 0.02);
-  sparkleGain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+  const subGain = audioCtx.createGain();
+  subGain.gain.setValueAtTime(0.001, now);
+  subGain.gain.exponentialRampToValueAtTime(peak * 0.35, now + 0.03);
+  subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.36);
 
   osc.connect(gain);
-  sparkle.connect(sparkleGain);
+  sub.connect(subGain);
   gain.connect(musicFilter);
-  sparkleGain.connect(musicFilter);
+  subGain.connect(musicFilter);
 
   osc.start(now);
-  sparkle.start(now);
-  osc.stop(now + 0.6);
-  sparkle.stop(now + 0.4);
+  sub.start(now);
+  osc.stop(now + 0.65);
+  sub.stop(now + 0.55);
 }
 
-function setMusicChord(chord, glideSeconds) {
+function playMusicBassPulse(freq, accent = false) {
+  if (!audioCtx || !musicFilter || !musicPlaying || !freq) return;
+
+  const now = audioCtx.currentTime;
+  const intensity = getMusicIntensity();
+  const osc = audioCtx.createOscillator();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(freq, now);
+  osc.frequency.exponentialRampToValueAtTime(freq * 0.82, now + 0.12);
+
+  const gain = audioCtx.createGain();
+  const peak = (accent ? 0.034 : 0.022) + intensity * 0.014;
+  gain.gain.setValueAtTime(0.001, now);
+  gain.gain.exponentialRampToValueAtTime(peak, now + 0.018);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + (accent ? 0.22 : 0.16));
+
+  osc.connect(gain);
+  gain.connect(musicFilter);
+  osc.start(now);
+  osc.stop(now + 0.24);
+}
+
+function setMusicChord(section, glideSeconds) {
   if (!audioCtx || !musicPlaying) return;
 
   const t = audioCtx.currentTime;
   musicPadVoices.forEach((voice, index) => {
-    const freq = chord.notes[index];
-    voice.osc.frequency.linearRampToValueAtTime(freq, t + glideSeconds);
+    const freq = section.notes[index];
+    const detune = 1 + (index - 1) * 0.0015;
+    voice.osc.frequency.linearRampToValueAtTime(freq * detune, t + glideSeconds);
   });
 
   if (musicBassOsc) {
-    musicBassOsc.frequency.linearRampToValueAtTime(chord.bass, t + glideSeconds);
+    musicBassOsc.frequency.linearRampToValueAtTime(section.bass, t + glideSeconds);
   }
+}
+
+function scheduleNextMusicArp() {
+  if (!musicPlaying || !audioCtx) return;
+
+  const section = getMusicSection();
+  const intensity = getMusicIntensity();
+  const pattern = section.arp;
+  const freq = pattern[musicArpStep % pattern.length];
+
+  playMusicArp(freq, intensity);
+  if (musicArpStep % 4 === 0) {
+    playMusicBassPulse(section.bass, musicArpStep % 16 === 0);
+  }
+
+  musicArpStep += 1;
+  const restPad = freq ? 0 : 110;
+  const gap = Math.round(section.arpMs * (1.04 - intensity * 0.2) + restPad);
+  musicTimers.push(setTimeout(scheduleNextMusicArp, gap));
+}
+
+function scheduleNextMusicSection() {
+  if (!musicPlaying) return;
+
+  const section = getMusicSection();
+  const intensity = getMusicIntensity();
+  const holdMs = Math.round(section.holdMs * (1.06 - intensity * 0.24));
+
+  musicTimers.push(
+    setTimeout(() => {
+      if (!musicPlaying) return;
+      musicSectionIndex = (musicSectionIndex + 1) % SURVIVAL_SECTIONS.length;
+      musicArpStep = 0;
+      setMusicChord(getMusicSection(), 1.8 + intensity * 0.9);
+      scheduleNextMusicSection();
+    }, holdMs)
+  );
 }
 
 function clearBackgroundMusicResources() {
@@ -949,8 +1044,8 @@ function clearBackgroundMusicResources() {
   }
 
   musicFilter = null;
-  musicPluckStep = 0;
-  musicChordIndex = 0;
+  musicArpStep = 0;
+  musicSectionIndex = 0;
 }
 
 function buildBackgroundMusic() {
@@ -958,19 +1053,17 @@ function buildBackgroundMusic() {
 
   musicFilter = audioCtx.createBiquadFilter();
   musicFilter.type = "lowpass";
-  musicFilter.frequency.value = 1700;
-  musicFilter.Q.value = 0.25;
+  updateMusicFilterForIntensity();
   musicFilter.connect(musicGain);
 
-  const firstChord = getSummerChord();
-
-  firstChord.notes.forEach((freq) => {
+  const firstSection = getMusicSection();
+  firstSection.notes.forEach((freq, index) => {
     const osc = audioCtx.createOscillator();
-    osc.type = "sine";
-    osc.frequency.value = freq;
+    osc.type = "triangle";
+    osc.frequency.value = freq * (1 + (index - 1) * 0.0015);
 
     const voiceGain = audioCtx.createGain();
-    voiceGain.gain.value = 0.022;
+    voiceGain.gain.value = 0.014;
 
     osc.connect(voiceGain);
     voiceGain.connect(musicFilter);
@@ -981,28 +1074,22 @@ function buildBackgroundMusic() {
 
   musicBassOsc = audioCtx.createOscillator();
   musicBassOsc.type = "sine";
-  musicBassOsc.frequency.value = firstChord.bass;
+  musicBassOsc.frequency.value = firstSection.bass;
   const bassGain = audioCtx.createGain();
-  bassGain.gain.value = 0.016;
+  bassGain.gain.value = 0.008;
   musicBassOsc.connect(bassGain);
   bassGain.connect(musicFilter);
   musicBassOsc.start();
 
-  const pluckTimer = setInterval(() => {
-    if (!musicPlaying || !audioCtx) return;
-    const chord = getSummerChord();
-    playSummerPluck(chord.pluck[musicPluckStep % chord.pluck.length]);
-    musicPluckStep += 1;
-  }, 780);
-  musicTimers.push(pluckTimer);
+  scheduleNextMusicArp();
+  scheduleNextMusicSection();
 
-  const chordTimer = setInterval(() => {
-    if (!musicPlaying) return;
-    musicChordIndex = (musicChordIndex + 1) % SUMMER_PROGRESSION.length;
-    musicPluckStep = 0;
-    setMusicChord(getSummerChord(), 2.8);
-  }, 11000);
-  musicTimers.push(chordTimer);
+  musicTimers.push(
+    setInterval(() => {
+      if (!musicPlaying) return;
+      updateMusicFilterForIntensity();
+    }, 1800)
+  );
 }
 
 function startBackgroundMusicNow() {
@@ -1586,9 +1673,13 @@ let zombies = [];
 let bullets = [];
 
 let playerBombs = [];
+let playerMolotovs = [];
+let molotovFireZones = [];
 let explosionEffects = [];
 let bombCharges = 3;
 let bombReadyAt = 0;
+let molotovCharges = 2;
+let molotovReadyAt = 0;
 
 let muzzleTracers = [];
 
@@ -1624,10 +1715,19 @@ const SHOOT_COOLDOWN = 12;
 const BOMB_COOLDOWN_MS = 30000;
 const BOMB_MAX_CHARGES = 3;
 const BOMB_THROW_SPEED = 8.5;
-const BOMB_BLAST_RADIUS = 148;
-const BOMB_DAMAGE_MULT = 6.5;
+const BOMB_BLAST_RADIUS = 168;
+const BOMB_DAMAGE_MULT = 8.5;
 const BOMB_MAX_FLIGHT_MS = 1200;
 const BOMB_MAX_RANGE = 420;
+const MOLOTOV_COOLDOWN_MS = 18000;
+const MOLOTOV_MAX_CHARGES = 2;
+const MOLOTOV_THROW_SPEED = 9.2;
+const MOLOTOV_MAX_FLIGHT_MS = 1100;
+const MOLOTOV_MAX_RANGE = 380;
+const MOLOTOV_FIRE_RADIUS = 118;
+const MOLOTOV_FIRE_LIFE = 270;
+const MOLOTOV_TICK_INTERVAL = 12;
+const WAVE_BOSS_ABILITY_DAMAGE_CAP = 0.44;
 
 let gameRunning = false;
 let gameMode = "campaign";
@@ -2665,9 +2765,13 @@ function resetSessionState() {
   zombies = [];
   bullets = [];
   playerBombs = [];
+  playerMolotovs = [];
+  molotovFireZones = [];
   explosionEffects = [];
   bombCharges = BOMB_MAX_CHARGES;
   bombReadyAt = 0;
+  molotovCharges = MOLOTOV_MAX_CHARGES;
+  molotovReadyAt = 0;
   hpPickups = [];
   lastHpPickupSpawnAt = 0;
   playerBaseSpeed = 4;
@@ -2897,8 +3001,8 @@ const TUTORIAL_STEPS = [
   {
     icon: "🎯",
     title: "Aim & shoot",
-    body: "The mouse aims automatically. Hold left click or click to shoot zombies. Press R for up to 3 bombs, then wait 30 seconds.",
-    keys: ["🖱️ Aim", "🔫 Shoot", "R Bomb x3"]
+    body: "The mouse aims automatically. Hold left click or click to shoot zombies. R = bomb (x3, big blast). T = molotov (x2, fire pool on the ground).",
+    keys: ["🖱️ Aim", "🔫 Shoot", "R Bomb x3", "T Molotov x2"]
   },
   {
     icon: "🌊",
@@ -3203,60 +3307,289 @@ function bulletHitsZombie(bullet, zombie) {
   return getBulletZombieHitInfo(bullet, zombie) !== null;
 }
 
+const BLOOD_COLORS = {
+  poolDeep: "#240606",
+  poolDark: "#3d0a0a",
+  poolMid: "#5c1010",
+  poolWet: "#731616",
+  fresh: "#8a1a1a",
+  sheen: "rgba(150,36,36,0.42)",
+  mist: "rgba(70,14,14,0.55)",
+  dry: "#2a1410",
+  edge: "rgba(12,4,4,0.72)"
+};
+
+const BLOOD_GORE = {
+  maxEffects: 560,
+  sprayMult: 2.85,
+  killSprayMult: 3.6,
+  splatSizeMult: 1.55,
+  hitIntensity: { normal: 1.85, heavy: 2.65, crit: 3.8 },
+  killIntensityBase: 2.4,
+  killIntensityStreak: 0.18
+};
+
+function buildBloodBlobPoints(rx, ry, hitAngle) {
+  const points = [];
+  const lobes = 8 + Math.floor(Math.random() * 4);
+
+  for (let i = 0; i < lobes; i++) {
+    const t = (Math.PI * 2 * i) / lobes + (Math.random() - 0.5) * 0.35;
+    const bulge = 0.52 + Math.random() * 0.5;
+    const squash = 0.68 + Math.random() * 0.38;
+    points.push({
+      x: Math.cos(t) * rx * bulge,
+      y: Math.sin(t) * ry * bulge * squash
+    });
+  }
+
+  const tendrils = 2 + Math.floor(Math.random() * 3);
+  for (let i = 0; i < tendrils; i++) {
+    const spread = (Math.random() - 0.5) * 0.75;
+    const dist = 0.72 + Math.random() * 0.58;
+    points.push({
+      x: Math.cos(hitAngle + spread) * rx * dist,
+      y: Math.sin(hitAngle + spread) * ry * dist * 0.62
+    });
+  }
+
+  return points;
+}
+
+function traceBloodBlob(ctx, points) {
+  if (points.length < 3) return;
+  ctx.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) {
+    const prev = points[i - 1];
+    const curr = points[i];
+    const mx = (prev.x + curr.x) * 0.5;
+    const my = (prev.y + curr.y) * 0.5;
+    ctx.quadraticCurveTo(prev.x, prev.y, mx, my);
+  }
+  const last = points[points.length - 1];
+  const first = points[0];
+  ctx.quadraticCurveTo(last.x, last.y, (last.x + first.x) * 0.5, (last.y + first.y) * 0.5);
+  ctx.closePath();
+}
+
+function mixBloodTone(brightHex, dryHex, age) {
+  const t = Math.max(0, Math.min(1, age));
+  const parse = (hex) => {
+    const value = hex.replace("#", "");
+    return [
+      parseInt(value.slice(0, 2), 16),
+      parseInt(value.slice(2, 4), 16),
+      parseInt(value.slice(4, 6), 16)
+    ];
+  };
+  const a = parse(brightHex);
+  const b = parse(dryHex);
+  const mix = a.map((channel, index) => Math.round(channel + (b[index] - channel) * t));
+  return `rgb(${mix[0]}, ${mix[1]}, ${mix[2]})`;
+}
+
+function pushBloodSplat(x, y, rx, ry, rot, lifeScale = 1) {
+  const splatLife = Math.round((150 + Math.random() * 110) * lifeScale);
+  bloodEffects.push({
+    type: "splat",
+    x,
+    y,
+    rx,
+    ry,
+    life: splatLife,
+    maxLife: splatLife,
+    rot,
+    blob: buildBloodBlobPoints(rx, ry, rot)
+  });
+}
+
+function pushBloodSpray(cx, cy, angle, scale, intensity = 1, spreadMult = 1) {
+  const sprayPower = intensity * BLOOD_GORE.sprayMult;
+  const dropCount = Math.round((16 + Math.floor(12 * scale)) * sprayPower);
+  for (let i = 0; i < dropCount; i++) {
+    const spread = (Math.random() - 0.5) * (1.45 + intensity * 0.55) * spreadMult;
+    const speed = (3.5 + Math.random() * (8 + intensity * 3.5)) * (0.9 + scale * 0.12);
+    const a = angle + spread;
+    const dropLife = 28 + Math.floor(Math.random() * 34);
+    bloodEffects.push({
+      type: "drop",
+      x: cx + (Math.random() - 0.5) * 14 * scale,
+      y: cy + (Math.random() - 0.5) * 14 * scale,
+      vx: Math.cos(a) * speed,
+      vy: Math.sin(a) * speed - 0.45,
+      life: dropLife,
+      maxLife: dropLife,
+      size: (2.4 + Math.random() * 4.8 * scale) * (0.9 + intensity * 0.2)
+    });
+  }
+
+  const streakCount = Math.max(5, Math.round(9 * sprayPower));
+  for (let i = 0; i < streakCount; i++) {
+    const spread = (Math.random() - 0.5) * 1.15 * spreadMult;
+    const speed = 6 + Math.random() * (11 + intensity * 4);
+    const a = angle + spread;
+    const streakLife = 14 + Math.floor(Math.random() * 18);
+    bloodEffects.push({
+      type: "streak",
+      x: cx + Math.cos(a) * 5,
+      y: cy + Math.sin(a) * 5,
+      vx: Math.cos(a) * speed,
+      vy: Math.sin(a) * speed,
+      life: streakLife,
+      maxLife: streakLife,
+      len: (12 + Math.random() * 22 * scale) * (0.95 + intensity * 0.45),
+      width: 1.2 + Math.random() * (2.2 + intensity * 0.9)
+    });
+  }
+
+  const mistCount = Math.round((14 + Math.random() * 16) * sprayPower);
+  for (let i = 0; i < mistCount; i++) {
+    const spread = (Math.random() - 0.5) * 1.85 * spreadMult;
+    const speed = 1.8 + Math.random() * (4.2 + intensity * 1.2);
+    const a = angle + spread;
+    const mistLife = 18 + Math.floor(Math.random() * 24);
+    bloodEffects.push({
+      type: "mist",
+      x: cx + (Math.random() - 0.5) * 12,
+      y: cy + (Math.random() - 0.5) * 12,
+      vx: Math.cos(a) * speed,
+      vy: Math.sin(a) * speed - 0.25,
+      life: mistLife,
+      maxLife: mistLife,
+      size: 1.4 + Math.random() * (3.4 + intensity * 0.6)
+    });
+  }
+}
+
+function pushBloodGush(cx, cy, angle, scale, intensity = 1) {
+  const gushPower = intensity * BLOOD_GORE.killSprayMult;
+  const jetCount = Math.round(14 + gushPower * 8);
+  for (let i = 0; i < jetCount; i++) {
+    const spread = (Math.random() - 0.5) * 2.4;
+    const speed = 8 + Math.random() * (14 + intensity * 5);
+    const a = angle + spread;
+    const streakLife = 16 + Math.floor(Math.random() * 20);
+    bloodEffects.push({
+      type: "streak",
+      x: cx + Math.cos(a) * 3,
+      y: cy + Math.sin(a) * 3,
+      vx: Math.cos(a) * speed,
+      vy: Math.sin(a) * speed - 0.8,
+      life: streakLife,
+      maxLife: streakLife,
+      len: (18 + Math.random() * 28 * scale) * (1 + intensity * 0.35),
+      width: 1.5 + Math.random() * (2.8 + intensity)
+    });
+  }
+
+  const burstCount = Math.round(24 + gushPower * 14);
+  for (let i = 0; i < burstCount; i++) {
+    const a = angle + (Math.random() - 0.5) * Math.PI * 0.95;
+    const speed = 4 + Math.random() * (12 + intensity * 4);
+    const dropLife = 30 + Math.floor(Math.random() * 36);
+    bloodEffects.push({
+      type: "drop",
+      x: cx + (Math.random() - 0.5) * 10,
+      y: cy + (Math.random() - 0.5) * 10,
+      vx: Math.cos(a) * speed,
+      vy: Math.sin(a) * speed - 1.1,
+      life: dropLife,
+      maxLife: dropLife,
+      size: 2.8 + Math.random() * (5.5 * scale + intensity)
+    });
+  }
+}
+
+function spawnBloodHit(zombie, hitInfo, options = {}) {
+  const cx = zombie.x + zombie.size / 2;
+  const cy = zombie.y + zombie.size / 2;
+  const angle = hitInfo?.angle ?? Math.random() * Math.PI * 2;
+  const scale = Math.max(0.75, zombie.size / ZOMBIE_DRAW_SIZE);
+  const intensity = options.isCrit
+    ? BLOOD_GORE.hitIntensity.crit
+    : options.isHeavy
+      ? BLOOD_GORE.hitIntensity.heavy
+      : BLOOD_GORE.hitIntensity.normal;
+  const splatMult = BLOOD_GORE.splatSizeMult;
+
+  pushBloodSpray(cx, cy - zombie.size * 0.04, angle, scale, intensity, 1);
+  pushBloodSpray(cx, cy - zombie.size * 0.04, angle + (Math.random() - 0.5) * 0.35, scale, intensity * 0.72, 1.35);
+
+  if (options.isCrit || options.isHeavy) {
+    pushBloodGush(cx, cy, angle, scale, intensity * 0.55);
+  }
+
+  pushBloodSplat(
+    cx + Math.cos(angle) * 4,
+    cy + zombie.size * 0.06 + Math.sin(angle) * 2,
+    (10 + Math.random() * 10) * scale * splatMult * (options.isCrit ? 1.15 : 0.9),
+    (6 + Math.random() * 7) * scale * splatMult * (options.isCrit ? 1.15 : 0.9),
+    angle + (Math.random() - 0.5) * 0.45,
+    options.isCrit || options.isHeavy ? 0.95 : 0.78
+  );
+
+  if (options.isCrit || options.isHeavy) {
+    pushBloodSplat(
+      cx + Math.cos(angle) * (10 + Math.random() * 8),
+      cy + zombie.size * 0.06 + Math.sin(angle) * (6 + Math.random() * 6),
+      (7 + Math.random() * 8) * scale * splatMult,
+      (5 + Math.random() * 6) * scale * splatMult,
+      angle + (Math.random() - 0.5) * 0.8,
+      0.82
+    );
+  }
+
+  trimBloodEffects();
+}
+
 function spawnBloodBurst(zombie, hitInfo) {
   const cx = zombie.x + zombie.size / 2;
   const cy = zombie.y + zombie.size / 2;
   const angle = hitInfo?.angle ?? Math.random() * Math.PI * 2;
   const scale = Math.max(0.8, zombie.size / ZOMBIE_DRAW_SIZE);
+  const streakBonus = typeof runKillStreak !== "undefined" ? Math.min(12, Math.max(0, runKillStreak - 2)) : 0;
+  const intensity = BLOOD_GORE.killIntensityBase + streakBonus * BLOOD_GORE.killIntensityStreak;
+  const splatMult = BLOOD_GORE.splatSizeMult;
 
-  const splatLife = 140 + Math.floor(Math.random() * 100);
-  bloodEffects.push({
-    type: "splat",
-    x: cx,
-    y: cy + zombie.size * 0.08,
-    rx: (24 + Math.random() * 18) * scale,
-    ry: (16 + Math.random() * 14) * scale,
-    life: splatLife,
-    maxLife: splatLife,
-    rot: angle + (Math.random() - 0.5) * 0.9
-  });
+  pushBloodSplat(
+    cx + Math.cos(angle) * 2,
+    cy + zombie.size * 0.08 + Math.sin(angle) * 2,
+    (28 + Math.random() * 22) * scale * splatMult,
+    (18 + Math.random() * 16) * scale * splatMult,
+    angle + (Math.random() - 0.5) * 0.55
+  );
 
-  const dropCount = 10 + Math.floor(6 * scale);
-  for (let i = 0; i < dropCount; i++) {
-    const spread = (Math.random() - 0.5) * 1.6;
-    const speed = 3 + Math.random() * 6;
-    const a = angle + spread;
-    const dropLife = 26 + Math.floor(Math.random() * 30);
-    bloodEffects.push({
-      type: "drop",
-      x: cx + (Math.random() - 0.5) * 14,
-      y: cy + (Math.random() - 0.5) * 14,
-      vx: Math.cos(a) * speed,
-      vy: Math.sin(a) * speed,
-      life: dropLife,
-      maxLife: dropLife,
-      size: 2.5 + Math.random() * 4.5 * scale
-    });
+  pushBloodSplat(
+    cx + Math.cos(angle + Math.PI) * 6,
+    cy + zombie.size * 0.08 + Math.sin(angle + Math.PI) * 4,
+    (18 + Math.random() * 14) * scale * splatMult,
+    (12 + Math.random() * 10) * scale * splatMult,
+    angle + Math.PI + (Math.random() - 0.5) * 0.7
+  );
+
+  const satelliteCount = 5 + Math.floor(Math.random() * 5);
+  for (let i = 0; i < satelliteCount; i++) {
+    const offsetAngle = angle + (Math.random() - 0.5) * 2.4;
+    const dist = (18 + Math.random() * 34) * scale;
+    pushBloodSplat(
+      cx + Math.cos(offsetAngle) * dist,
+      cy + zombie.size * 0.08 + Math.sin(offsetAngle) * dist * 0.45,
+      (10 + Math.random() * 12) * scale * splatMult,
+      (7 + Math.random() * 9) * scale * splatMult,
+      offsetAngle + (Math.random() - 0.5) * 0.7,
+      0.88
+    );
   }
 
-  for (let i = 0; i < 4; i++) {
-    const streakLife = 14 + Math.floor(Math.random() * 12);
-    const a = angle + (Math.random() - 0.5) * 1.2;
-    const speed = 6 + Math.random() * 8;
-    bloodEffects.push({
-      type: "streak",
-      x: cx,
-      y: cy,
-      vx: Math.cos(a) * speed,
-      vy: Math.sin(a) * speed,
-      life: streakLife,
-      maxLife: streakLife,
-      len: 10 + Math.random() * 14 * scale,
-      width: 2 + Math.random() * 2
-    });
-  }
+  pushBloodSpray(cx, cy - zombie.size * 0.02, angle, scale, intensity, 1);
+  pushBloodSpray(cx, cy - zombie.size * 0.02, angle + 0.55, scale, intensity * 0.85, 1.6);
+  pushBloodSpray(cx, cy - zombie.size * 0.02, angle - 0.55, scale, intensity * 0.85, 1.6);
+  pushBloodGush(cx, cy, angle, scale, intensity);
+  trimBloodEffects();
+}
 
-  while (bloodEffects.length > 180) bloodEffects.shift();
+function trimBloodEffects() {
+  while (bloodEffects.length > BLOOD_GORE.maxEffects) bloodEffects.shift();
 }
 
 function updateBloodEffects() {
@@ -3270,65 +3603,155 @@ function updateBloodEffects() {
     if (p.type === "drop") {
       p.x += p.vx;
       p.y += p.vy;
-      p.vx *= 0.88;
-      p.vy *= 0.88;
-      p.vy += 0.15;
+      p.vx *= 0.9;
+      p.vy *= 0.9;
+      p.vy += 0.18;
     } else if (p.type === "streak") {
       p.x += p.vx;
       p.y += p.vy;
-      p.vx *= 0.82;
-      p.vy *= 0.82;
+      p.vx *= 0.84;
+      p.vy *= 0.84;
+      p.vy += 0.04;
+    } else if (p.type === "mist") {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vx *= 0.92;
+      p.vy *= 0.92;
+      p.vy += 0.015;
     }
   }
+}
+
+function drawBloodSplat(p, alpha) {
+  const age = 1 - p.life / p.maxLife;
+  const bodyColor = mixBloodTone(BLOOD_COLORS.poolMid, BLOOD_COLORS.dry, age * 0.85);
+  const wetColor = mixBloodTone(BLOOD_COLORS.poolWet, BLOOD_COLORS.poolDark, age * 0.55);
+
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  ctx.rotate(p.rot);
+
+  ctx.globalAlpha = alpha * (0.92 - age * 0.08);
+  ctx.fillStyle = BLOOD_COLORS.poolDeep;
+  ctx.beginPath();
+  traceBloodBlob(ctx, p.blob);
+  ctx.fill();
+
+  ctx.globalAlpha = alpha * (0.88 - age * 0.12);
+  ctx.fillStyle = bodyColor;
+  ctx.beginPath();
+  traceBloodBlob(ctx, p.blob);
+  ctx.fill();
+
+  ctx.save();
+  ctx.scale(0.72, 0.68);
+  ctx.globalAlpha = alpha * (0.42 - age * 0.28);
+  ctx.fillStyle = wetColor;
+  ctx.beginPath();
+  traceBloodBlob(ctx, p.blob);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.globalAlpha = alpha * Math.max(0, 0.34 - age * 0.24);
+  ctx.fillStyle = BLOOD_COLORS.sheen;
+  ctx.beginPath();
+  ctx.ellipse(-p.rx * 0.12, -p.ry * 0.18, p.rx * 0.22, p.ry * 0.14, -0.4, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.globalAlpha = alpha * (0.55 - age * 0.2);
+  ctx.strokeStyle = BLOOD_COLORS.edge;
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  traceBloodBlob(ctx, p.blob);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawBloodDrop(p, alpha) {
+  const speed = Math.hypot(p.vx, p.vy);
+  const angle = Math.atan2(p.vy, p.vx);
+  const stretch = 1 + Math.min(2.4, speed * 0.2);
+  const age = 1 - p.life / p.maxLife;
+
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  ctx.rotate(angle);
+  ctx.globalAlpha = alpha * (0.9 - age * 0.15);
+  ctx.fillStyle = mixBloodTone(BLOOD_COLORS.poolDark, BLOOD_COLORS.dry, age * 0.7);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, p.size * stretch, p.size * 0.68, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = alpha * Math.max(0, 0.28 - age * 0.18);
+  ctx.fillStyle = BLOOD_COLORS.sheen;
+  ctx.beginPath();
+  ctx.ellipse(-p.size * 0.12 * stretch, -p.size * 0.18, p.size * 0.24, p.size * 0.14, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawBloodStreak(p, alpha) {
+  const angle = Math.atan2(p.vy, p.vx);
+  const lifeRatio = p.life / p.maxLife;
+  const len = p.len * (0.35 + lifeRatio * 0.65);
+
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  ctx.rotate(angle);
+  ctx.globalAlpha = alpha * 0.78;
+  ctx.lineCap = "round";
+  ctx.strokeStyle = BLOOD_COLORS.poolDark;
+  ctx.lineWidth = p.width * 1.15;
+  ctx.beginPath();
+  ctx.moveTo(-len * 0.08, 0);
+  ctx.lineTo(len * 0.92, 0);
+  ctx.stroke();
+
+  const grad = ctx.createLinearGradient(-len * 0.1, 0, len * 0.9, 0);
+  grad.addColorStop(0, BLOOD_COLORS.poolDeep);
+  grad.addColorStop(0.25, BLOOD_COLORS.fresh);
+  grad.addColorStop(0.72, "rgba(90,18,18,0.45)");
+  grad.addColorStop(1, "rgba(60,12,12,0)");
+  ctx.strokeStyle = grad;
+  ctx.lineWidth = p.width;
+  ctx.beginPath();
+  ctx.moveTo(-len * 0.08, 0);
+  ctx.lineTo(len * 0.92, 0);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawBloodMist(p, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha * 0.55;
+  ctx.fillStyle = BLOOD_COLORS.mist;
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = alpha * 0.22;
+  ctx.fillStyle = BLOOD_COLORS.sheen;
+  ctx.beginPath();
+  ctx.arc(p.x - p.size * 0.25, p.y - p.size * 0.25, p.size * 0.45, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
 }
 
 function drawBloodEffects() {
   for (const p of bloodEffects) {
     const alpha = Math.max(0, p.life / p.maxLife);
     if (p.type === "splat") {
-      ctx.save();
-      ctx.translate(p.x, p.y);
-      ctx.rotate(p.rot);
-      ctx.globalAlpha = alpha * 0.85;
-      ctx.fillStyle = "#8b1010";
-      ctx.beginPath();
-      ctx.ellipse(0, 0, p.rx, p.ry, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = alpha * 0.55;
-      ctx.fillStyle = "#d62828";
-      ctx.beginPath();
-      ctx.ellipse(p.rx * 0.1, -p.ry * 0.06, p.rx * 0.5, p.ry * 0.38, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = alpha * 0.35;
-      ctx.fillStyle = "#ff4d4d";
-      ctx.beginPath();
-      ctx.arc(-p.rx * 0.2, p.ry * 0.12, p.rx * 0.12, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
+      drawBloodSplat(p, alpha);
       continue;
     }
-
     if (p.type === "streak") {
-      const angle = Math.atan2(p.vy, p.vx);
-      ctx.save();
-      ctx.translate(p.x, p.y);
-      ctx.rotate(angle);
-      ctx.globalAlpha = alpha * 0.9;
-      ctx.fillStyle = "#e02020";
-      ctx.fillRect(-p.len * 0.2, -p.width / 2, p.len, p.width);
-      ctx.restore();
+      drawBloodStreak(p, alpha);
       continue;
     }
-
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = "#ef2020";
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#ff6666";
-    ctx.beginPath();
-    ctx.arc(p.x - p.size * 0.25, p.y - p.size * 0.25, p.size * 0.35, 0, Math.PI * 2);
-    ctx.fill();
+    if (p.type === "mist") {
+      drawBloodMist(p, alpha);
+      continue;
+    }
+    drawBloodDrop(p, alpha);
   }
   ctx.globalAlpha = 1;
 }
@@ -3352,6 +3775,7 @@ function updateFloatingTexts() {
     const t = floatingTexts[i];
     t.life -= 1;
     t.y += t.vy;
+    if (t.vx) t.x += t.vx;
     if (t.life <= 0) floatingTexts.splice(i, 1);
   }
 }
@@ -3359,16 +3783,37 @@ function updateFloatingTexts() {
 function drawFloatingTexts() {
   for (const t of floatingTexts) {
     const alpha = Math.max(0, t.life / t.maxLife);
-    const size = Math.round(11 * (t.scale || 1));
+    const lifeRatio = 1 - t.life / t.maxLife;
+    const popScale =
+      t.kind === "damage"
+        ? (t.pop || 1) + Math.sin(lifeRatio * Math.PI) * 0.16
+        : 1;
+    const size = Math.round(11 * (t.scale || 1) * popScale);
+    const isBigDamage =
+      t.kind === "damage" &&
+      (t.style === "crit" ||
+        t.style === "burst" ||
+        t.style === "bossCrit" ||
+        t.style === "kill");
+
+    ctx.save();
     ctx.font = `bold ${size}px monospace`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.globalAlpha = alpha;
-    ctx.strokeStyle = "rgba(0,0,0,0.9)";
-    ctx.lineWidth = 2;
+
+    if (isBigDamage) {
+      ctx.shadowColor =
+        t.style === "kill" || t.style === "burst" ? "#ff5555" : "#ffaa33";
+      ctx.shadowBlur = t.style === "burst" || t.style === "bossCrit" ? 18 : 12;
+    }
+
+    ctx.strokeStyle = "rgba(0,0,0,0.92)";
+    ctx.lineWidth = isBigDamage ? 3 : 2;
     ctx.strokeText(t.text, t.x, t.y);
     ctx.fillStyle = t.color;
     ctx.fillText(t.text, t.x, t.y);
+    ctx.restore();
   }
   ctx.globalAlpha = 1;
 }
@@ -3520,7 +3965,7 @@ function spawnPlayerKillReward({ xp, sp = 0, spLabel = "", tier = "normal", kind
   applyPlayerRewardGlow(config, colors);
   while (playerRewardEffects.length > 4) playerRewardEffects.shift();
 
-  if (config.playSound) playLevelUp();
+  if (config.playSound && typeof playXpPickupSound === "function") playXpPickupSound();
 }
 
 function updatePlayerRewardEffects() {
@@ -3611,6 +4056,20 @@ function drawRewardBadge({
     ctx.fillStyle = spColor;
     ctx.fillText(spText, cx, spY);
   }
+}
+
+function getPlayerOverheadStackTop() {
+  let top = null;
+  if (playerXpFeed) {
+    top = player.y - 34 + playerXpFeed.floatY;
+  }
+  for (const fx of playerRewardEffects) {
+    const config = PLAYER_REWARD_TIERS[fx.tier] || PLAYER_REWARD_TIERS.normal;
+    const stackLift = fx.stackIndex * (fx.tier === "normal" ? 10 : 13);
+    const badgeY = player.y - 32 - stackLift + fx.floatY;
+    top = top == null ? badgeY : Math.min(top, badgeY);
+  }
+  return top;
 }
 
 function drawPlayerXpFeed() {
@@ -3728,6 +4187,11 @@ function drawPlayerRewardEffects() {
   }
 
   drawPlayerXpFeed();
+
+  if (typeof drawActiveKillStreakHudAt === "function") {
+    drawActiveKillStreakHudAt(cx, player.y - 2, getPlayerOverheadStackTop());
+  }
+
   ctx.globalAlpha = 1;
 }
 
@@ -3749,7 +4213,6 @@ function getShootCooldown() {
 function canPlayerShoot() {
   if (!gameRunning || !c || paused || isGameOverVisible()) return false;
   if (deathSequence?.active) return false;
-  if (typeof shouldSkipGameplayUpdate === "function" && shouldSkipGameplayUpdate()) return false;
   return true;
 }
 
@@ -3771,7 +4234,9 @@ function getTotalPowerUpgrades() {
 
 function getWeaponPower(weaponId) {
   const weapon = getWeaponById(weaponId);
-  return Math.max(1, Math.round((1 + getWeaponLevel(weaponId)) * weapon.damageMult));
+  const level = getWeaponLevel(weaponId);
+  const levelScale = 1 + level * (1.08 + level * 0.035);
+  return Math.max(1, Math.round(levelScale * weapon.damageMult));
 }
 
 function getEffectivePlayerDamage() {
@@ -3815,6 +4280,7 @@ function unlockWeapon(weaponId) {
   unlockedWeapons.add(weaponId);
   equippedWeaponId = weaponId;
   syncPlayerDamageFromWeapon();
+  playShopUpgradeFeedback();
   showMilestone(`${weapon.emoji} ${weapon.name} unlocked!`);
   saveProgress();
   updateUI();
@@ -3869,6 +4335,10 @@ function renderWeaponShopList(force = false) {
   }).join("");
 }
 
+function playShopUpgradeFeedback() {
+  if (typeof playUpgradeDing === "function") playUpgradeDing();
+}
+
 function upgradeWeaponLevel(weaponId, count) {
   if (!canUseSkillShop() || !isWeaponUnlocked(weaponId)) return 0;
 
@@ -3878,6 +4348,7 @@ function upgradeWeaponLevel(weaponId, count) {
   player.skillPoints -= spend;
   weaponLevels[weaponId] = getWeaponLevel(weaponId) + spend;
   syncPlayerDamageFromWeapon();
+  playShopUpgradeFeedback();
   return spend;
 }
 
@@ -3888,16 +4359,48 @@ function handleWeaponHotkey(key) {
   selectWeapon(weapon.id);
 }
 
+function rollCritHit() {
+  return Math.random() < 0.12;
+}
+
 function damageZombie(zombie, index, hitInfo, bulletDamage) {
-  const damage = Math.round((bulletDamage ?? player.damage) * getRunDamageMult());
+  const baseDamage = Math.round((bulletDamage ?? player.damage) * getRunDamageMult());
+  const isCrit = rollCritHit();
+  const damage = isCrit ? Math.max(1, Math.round(baseDamage * 1.8)) : baseDamage;
+  const hpBefore = zombie.hp;
+  const isBoss = zombie.tier === "waveBoss" || zombie.isWaveBoss || zombie.tier === "boss";
+  const isElite = isBoss || zombie.tier === "medium" || zombie.tier === "tank";
   zombie.hp -= damage;
 
   const cx = zombie.x + zombie.size / 2;
   const cy = zombie.y + zombie.size / 2;
+  const isKill = zombie.hp <= 0;
+  const isHeavy = !isCrit && damage >= Math.round(getEffectivePlayerDamage() * 0.85);
+
   spawnDamageNumber(cx, cy - zombie.size * 0.15, damage, {
-    big: zombie.tier === "waveBoss" || zombie.isWaveBoss || zombie.tier === "boss"
+    isCrit,
+    isKill,
+    isBoss,
+    heavy: isHeavy
   });
-  addScreenShake(zombie.tier === "waveBoss" || zombie.isWaveBoss ? 0.55 : 0.12);
+
+  if (isCrit && typeof playCritSound === "function") {
+    playCritSound();
+  } else if (typeof playHitSound === "function") {
+    playHitSound(isElite ? "elite" : isHeavy ? "heavy" : "normal");
+  }
+
+  if (!isKill && Math.random() < 0.035 && typeof playZombieGroan === "function") {
+    playZombieGroan(zombie);
+  }
+
+  addScreenShake(
+    isKill ? 0 : isBoss ? 0.55 : isCrit ? 0.22 : 0.12
+  );
+
+  if (!isKill) {
+    spawnBloodHit(zombie, hitInfo, { isCrit, isHeavy });
+  }
 
   if (zombie.isWaveBoss || zombie.tier === "waveBoss") {
     updateWaveBossPhases(zombie);
@@ -3915,8 +4418,12 @@ function damageZombie(zombie, index, hitInfo, bulletDamage) {
       zombie.archetype === "spitter";
 
     spawnBloodBurst(zombie, hitInfo);
-    if (wasElite) triggerHitStop(zombie.isWaveBoss ? 4 : 2);
-    if (zombie.isWaveBoss || zombie.tier === "waveBoss") addScreenShake(6);
+    if (typeof spawnKillJuice === "function") {
+      spawnKillJuice(zombie, { isCrit, isBoss, isElite: wasElite });
+    } else {
+      if (wasElite) triggerHitStop(zombie.isWaveBoss ? 4 : 2);
+      if (zombie.isWaveBoss || zombie.tier === "waveBoss") addScreenShake(6);
+    }
     playZombieDeathSound(zombie);
     zombies.splice(index, 1);
     onZombieKilled(zombie);
@@ -3924,7 +4431,6 @@ function damageZombie(zombie, index, hitInfo, bulletDamage) {
 }
 
 function pushBullet(x, y, dx, dy, speed, options = {}) {
-  playGunshot();
   const color = options.color || "#ffe566";
   const beamLen = Math.min(72, 28 + speed * 1.8);
 
@@ -3934,8 +4440,8 @@ function pushBullet(x, y, dx, dy, speed, options = {}) {
     x2: x + dx * beamLen,
     y2: y + dy * beamLen,
     color,
-    life: 6,
-    maxLife: 6
+    life: 8,
+    maxLife: 8
   });
 
   bullets.push({
@@ -4457,7 +4963,7 @@ function showMilestone(message) {
 function getDifficultyBoost() {
   const ease = getWaveDifficultyEase();
   const threat = getPlayerThreatMultiplier();
-  return Math.min(2.5, Math.max(0, threat - 0.85) * 0.28) * ease;
+  return Math.min(1.85, Math.max(0, threat - 0.92) * 0.16) * ease;
 }
 
 function getDifficultyPhase() {
@@ -4480,10 +4986,14 @@ function getWaveSpeedBonus() {
   const w = wave;
   const ease = getWaveDifficultyEase();
   let bonus;
-  if (w <= 10) bonus = (w - 1) * 0.02;
-  else if (w <= 25) bonus = 0.18 + (w - 10) * 0.03;
-  else bonus = 0.63 + (w - 25) * 0.035;
+  if (w <= 10) bonus = (w - 1) * 0.034;
+  else if (w <= 25) bonus = 0.31 + (w - 10) * 0.038;
+  else bonus = 0.88 + (w - 25) * 0.044;
   return bonus * ease;
+}
+
+function tuneZombieSpeed(speed) {
+  return speed * ZOMBIE_SPEED_TUNE;
 }
 
 function getMaxZombiesForWave() {
@@ -4498,10 +5008,10 @@ function getWaveZombieCount() {
   const profile = getPlayerPowerProfile();
 
   let count = Math.round(
-    (10 + (wave - 1) * 1.2) *
-      (0.95 + boost * 0.1) *
-      (0.92 + (difficultyMultiplier - 1) * 0.12) *
-      (0.96 + Math.min(0.18, profile.powerMult * 0.012))
+    (10 + (wave - 1) * 1.28) *
+      (0.96 + boost * 0.14) *
+      (0.94 + (difficultyMultiplier - 1) * 0.08) *
+      (0.98 + Math.min(0.12, Math.log10(Math.max(10, profile.rating)) * 0.05))
   );
 
   if (wave <= 5) {
@@ -4542,9 +5052,9 @@ function getTotalShopUpgrades() {
 function getEliteRollThresholds() {
   const profile = getPlayerPowerProfile();
   const elitePresence = clamp(
-    Math.pow(Math.max(profile.upgrades, 1) / 18, 0.62) * (0.7 + profile.powerMult * 0.05),
+    Math.pow(Math.max(profile.upgrades, 1) / 28, 0.48) * (0.52 + Math.log10(Math.max(10, profile.rating)) * 0.08),
     0,
-    1
+    0.82
   );
 
   let base;
@@ -4560,86 +5070,136 @@ function getEliteRollThresholds() {
   };
 }
 
-function getTargetHitsForTier(tier) {
+function getUpgradePowerProgress() {
   const total = getTotalShopUpgrades();
-  let normalHits;
+  return clamp(Math.pow(total / 58, 0.68), 0, 1);
+}
 
-  if (total <= 0) {
-    normalHits = 1.05;
-  } else if (total <= 12) {
-    normalHits = 1.1 + total * 0.11;
-  } else if (total <= 100) {
-    normalHits = 2.4 + (total - 12) * 0.04;
-  } else if (total <= 500) {
-    normalHits = 5.9 + Math.pow(total - 100, 0.5) * 0.42;
-  } else {
-    normalHits = 8.4 + Math.pow(total - 500, 0.42) * 0.58;
-  }
-
+function getTargetTtkForTier(tier, strength = "strong") {
+  const progress = getUpgradePowerProgress();
   const tierMult = {
     normal: 1,
-    tank: 2.6,
-    medium: 4.5,
-    boss: 10,
+    tank: 1.85,
+    medium: 2.85,
+    boss: 6.4
   };
+  const strengthMult = strength === "weak" ? 0.92 : 1;
+  const mult = (tierMult[tier] || 1) * strengthMult;
 
-  return normalHits * (tierMult[tier] || 1);
+  const wavePressure = clamp((wave - 1) * 0.045, 0, 2.4);
+  const baseline = 1.15 + wave * 0.058 + wavePressure * 0.34;
+  const upgradedFloor = PROGRESSION_UPGRADED_NORMAL_TTK + Math.min(1.1, wave * 0.012);
+  const ttk = (baseline * (1 - progress * 0.76) + upgradedFloor * progress) * mult;
+  return Math.max(0.95, ttk);
+}
+
+function getTargetHitsForTier(tier) {
+  return getTargetTtkForTier(tier, "strong");
 }
 
 function getZombieHpForTier(tier, waveScale, strength = "strong") {
   const total = getTotalPowerUpgrades();
   const playerDamage = getEffectivePlayerDamage();
-  const waveFactor = 0.42 + waveScale * 0.68;
+  const ttk = getTargetTtkForTier(tier, strength);
+  let hp = Math.max(1, Math.round(playerDamage * ttk));
 
-  if (strength === "weak") {
-    const weakHits = {
-      normal: 0.92,
-      tank: 1.0,
-      medium: 1.08,
-      boss: 1.2,
-    };
-    let hp = playerDamage * (weakHits[tier] || 0.92) * 0.28;
-
-    if (total <= 3) {
-      hp *= 0.22 + total * 0.2;
-    }
-
-    // Svaga zombier ska nästan alltid dö på en träff — även med 500+ upgrades.
-    return Math.max(1, Math.min(Math.round(hp), Math.round(playerDamage * 0.98)));
+  if (total <= 3 && strength === "strong") {
+    hp = Math.max(1, Math.round(hp * (0.32 + total * 0.18)));
+  } else if (wave <= 4 && strength === "weak") {
+    hp = Math.max(1, Math.round(hp * 0.86));
   }
 
-  const hits = getTargetHitsForTier(tier);
-  let hp = playerDamage * hits * waveFactor * 0.3;
+  return hp;
+}
 
-  if (total <= 3) {
-    hp *= 0.22 + total * 0.2;
-  }
+function getBombKillTier(zombie) {
+  if (zombie?.isWaveBoss || zombie?.tier === "waveBoss") return "waveBoss";
+  if (zombie?.tier === "boss") return "boss";
+  if (zombie?.tier === "medium") return "medium";
+  if (zombie?.tier === "tank") return "tank";
+  return "normal";
+}
 
-  return Math.max(1, Math.round(hp));
+function isWaveBossZombie(zombie) {
+  return Boolean(zombie?.isWaveBoss || zombie?.tier === "waveBoss");
+}
+
+function initWaveBossAbilityTracking(zombie) {
+  if (!isWaveBossZombie(zombie)) return;
+  const maxHp = Math.max(1, zombie.maxHp || zombie.hp || 1);
+  zombie.abilityDamageTaken = 0;
+  zombie.abilityDamageCap = Math.max(1, Math.round(maxHp * WAVE_BOSS_ABILITY_DAMAGE_CAP));
+}
+
+function capAbilityDamageForWaveBoss(zombie, proposedDamage) {
+  if (!isWaveBossZombie(zombie)) return proposedDamage;
+  const cap = zombie.abilityDamageCap ?? Math.round((zombie.maxHp || zombie.hp || 1) * WAVE_BOSS_ABILITY_DAMAGE_CAP);
+  const taken = zombie.abilityDamageTaken || 0;
+  const remaining = Math.max(0, cap - taken);
+  const applied = Math.min(Math.max(0, proposedDamage), remaining);
+  zombie.abilityDamageTaken = taken + applied;
+  return applied;
+}
+
+function getBombDamageForZombie(zombie, falloff) {
+  const mult = getRunDamageMult();
+  const base = Math.round(getEffectivePlayerDamage() * BOMB_DAMAGE_MULT * mult * falloff);
+  const progress = getUpgradePowerProgress();
+  const tier = getBombKillTier(zombie);
+  const maxHp = Math.max(1, zombie.maxHp || zombie.hp || 1);
+
+  const hpPortion = {
+    normal: 1.02,
+    tank: 0.78,
+    medium: 0.72,
+    boss: 0.38,
+    waveBoss: 0.12
+  };
+  const antiUpgradeBoost = tier === "waveBoss" ? 1 + progress * 0.06 : 1 + progress * 0.22;
+  let hpDamage = Math.ceil(maxHp * (hpPortion[tier] || 0.95) * falloff * antiUpgradeBoost);
+  let damage = Math.max(1, Math.max(base, hpDamage));
+  return capAbilityDamageForWaveBoss(zombie, damage);
+}
+
+function getMolotovTickDamageForZombie(zombie, falloff) {
+  const mult = getRunDamageMult();
+  const progress = getUpgradePowerProgress();
+  const tier = getBombKillTier(zombie);
+  const maxHp = Math.max(1, zombie.maxHp || zombie.hp || 1);
+
+  const hpPortionPerTick = {
+    normal: 0.058,
+    tank: 0.042,
+    medium: 0.038,
+    boss: 0.016,
+    waveBoss: 0.0042
+  };
+  const antiUpgradeBoost = tier === "waveBoss" ? 1 + progress * 0.05 : 1 + progress * 0.2;
+  const base = Math.round(getEffectivePlayerDamage() * 1.15 * mult * falloff);
+  let hpDamage = Math.ceil(maxHp * (hpPortionPerTick[tier] || 0.05) * falloff * antiUpgradeBoost);
+  let damage = Math.max(1, Math.max(base, hpDamage));
+  return capAbilityDamageForWaveBoss(zombie, damage);
+}
+
+function getStrongZombieRatio() {
+  const profile = getPlayerPowerProfile();
+  let ratio =
+    0.16 +
+    wave * 0.0038 -
+    Math.log10(Math.max(profile.upgrades, 1) + 1) * 0.038 -
+    Math.log10(Math.max(10, profile.damage)) * 0.012;
+
+  if (wave <= 5) ratio *= 0.55;
+  return clamp(ratio, PROGRESSION_MIN_STRONG_RATIO, PROGRESSION_MAX_STRONG_RATIO);
 }
 
 function getStrongZombieCount(waveCount) {
-  const profile = getPlayerPowerProfile();
-  const maxStrong = Math.max(1, Math.floor(waveCount * (0.38 + Math.min(0.12, profile.powerMult * 0.012))));
+  const maxStrong = Math.max(1, Math.floor(waveCount * PROGRESSION_MAX_STRONG_RATIO));
+  let count = Math.round(waveCount * getStrongZombieRatio());
 
-  if (profile.upgrades <= 0) {
-    return waveCount <= 3 ? 0 : Math.min(maxStrong, 1);
-  }
-  if (profile.upgrades <= 15) {
-    return Math.min(maxStrong, 1 + Math.floor(Math.random() * 2));
-  }
-  if (profile.upgrades <= 50) {
-    return Math.min(maxStrong, 2 + Math.floor(Math.random() * 2));
-  }
-  if (profile.upgrades <= 150) {
-    return Math.min(maxStrong, 3 + Math.floor(Math.random() * 2));
-  }
-  if (profile.upgrades <= 500) {
-    return Math.min(maxStrong, 4 + Math.floor(Math.random() * 2));
-  }
-
-  const scaled = 5 + Math.floor(Math.log10(Math.max(profile.upgrades, 500)) * 2.4);
-  return Math.min(maxStrong, scaled + Math.floor(Math.random() * 2));
+  if (wave <= 3) return 0;
+  if (wave <= 8) return clamp(count, 1, Math.min(maxStrong, 2));
+  return clamp(count, 1, maxStrong);
 }
 
 function getTierPriority(tier) {
@@ -5323,15 +5883,21 @@ function getPlayerPowerProfile() {
 function getPlayerThreatMultiplier() {
   const profile = getPlayerPowerProfile();
   const ease = getWaveDifficultyEase();
-  return profile.powerMult * (0.72 + ease * 0.28);
+  const threat = 0.9 + Math.log10(Math.max(10, profile.rating)) * 0.085;
+  return clamp(threat * (0.84 + ease * 0.16), 0.9, 1.42);
 }
 
 function getWaveBossHitCount() {
   const { level, upgrades } = getPlayerPowerProfile();
   const waveTier = wave / WAVE_BOSS_INTERVAL;
 
-  let hits = 14 + level * 1.1 + upgrades * 0.34 + (waveTier - 1) * 5.5;
-  return Math.max(12, Math.round(hits));
+  let hits =
+    12 +
+    wave * 0.62 +
+    level * 0.75 +
+    Math.pow(Math.max(upgrades, 1), 0.42) * 1.05 +
+    (waveTier - 1) * 4.8;
+  return Math.max(10, Math.round(hits));
 }
 
 function getWaveBossSize() {
@@ -5350,7 +5916,12 @@ function getWaveBossStats() {
   const playerDamage = getEffectivePlayerDamage();
 
   let hp = Math.round(playerDamage * hits * (0.42 + waveScale * 0.72) * 0.34);
-  hp = Math.max(hp, Math.round(playerDamage * (10 + profile.level * 0.75 + profile.upgrades * 0.2)));
+  hp = Math.max(
+    hp,
+    Math.round(
+      playerDamage * (8 + profile.level * 0.58 + Math.pow(Math.max(profile.upgrades, 1), 0.45) * 0.95)
+    )
+  );
 
   const size = getWaveBossSize();
   const boost = getDifficultyBoost();
@@ -5360,14 +5931,15 @@ function getWaveBossStats() {
   const zombieSpeedMult = event.zombieSpeedMult || 1;
 
   const waveTier = wave / WAVE_BOSS_INTERVAL;
-  const speed =
-    (2.5 + speedBonus * 0.8 + boost * 0.18 + waveTier * 0.32) *
-    (0.94 + ease * 0.16) *
-    zombieSpeedMult;
+  const speed = tuneZombieSpeed(
+    (1.58 + speedBonus * 0.38 + boost * 0.08 + waveTier * 0.12) *
+      (0.92 + ease * 0.12) *
+      zombieSpeedMult
+  );
 
   const damage = Math.round(
-    (14 + wave * 0.9 + profile.level * 0.55 + profile.upgrades * 0.18) *
-      difficultyMultiplier
+    (14 + wave * 0.92 + profile.level * 0.48 + Math.pow(Math.max(profile.upgrades, 1), 0.45) * 0.85) *
+      (0.84 + (difficultyMultiplier - 1) * 0.38)
   );
 
   return { hp, size, speed, damage, hits };
@@ -5383,7 +5955,27 @@ function isSafeBossSpawn(x, y, size, padding = 56) {
 }
 
 function getBossSpawnMinCenterDist(size) {
-  return Math.max(360, (PLAYER_SIZE + size) * 0.55 + 140);
+  return Math.max(500, (PLAYER_SIZE + size) * 0.62 + 180);
+}
+
+function getWaveBossSpeedCap(phase = 1) {
+  const playerCap = (player?.speed || 4) * (typeof getRunMoveSpeedMult === "function" ? getRunMoveSpeedMult() : 1);
+  const idx = clamp((phase || 1) - 1, 0, WAVE_BOSS_SPEED_CAP_VS_PLAYER.length - 1);
+  return playerCap * WAVE_BOSS_SPEED_CAP_VS_PLAYER[idx];
+}
+
+function clampWaveBossSpeed(speed, phase = 1) {
+  return Math.min(speed, getWaveBossSpeedCap(phase));
+}
+
+function getWaveBossChaseSpeed(speed, phase, dist, size) {
+  const capped = clampWaveBossSpeed(speed, phase);
+  const closeRadius = size * 0.48 + 72;
+  const lingerRadius = size * 0.72 + 118;
+  if (dist >= lingerRadius) return capped;
+  if (dist <= closeRadius) return capped * WAVE_BOSS_CLOSE_CHASE_MULT;
+  const t = (dist - closeRadius) / Math.max(1, lingerRadius - closeRadius);
+  return capped * (WAVE_BOSS_CLOSE_CHASE_MULT + t * (1 - WAVE_BOSS_CLOSE_CHASE_MULT));
 }
 
 function getBossSpawnPoint(size) {
@@ -5461,13 +6053,14 @@ function spawnWaveBoss() {
     isWaveBoss: true,
     bossPhase: 1,
     size: stats.size,
-    speed: stats.speed,
+    speed: clampWaveBossSpeed(stats.speed, 1),
     damage: stats.damage,
-    hitCooldown: 36,
+    hitCooldown: 44,
     facingAngle: Math.atan2(toPlayerY, toPlayerX),
-    jitter: Math.random() * 0.5 + 0.5,
+    jitter: 1,
     skinStyle: pickZombieSkinStyle()
   });
+  initWaveBossAbilityTracking(zombies[zombies.length - 1]);
 }
 
 const FREEPLAY_BASE_SPAWN_INTERVAL = 78;
@@ -5559,22 +6152,24 @@ function getFreeplayBossStats() {
   let hp = Math.round(playerDamage * hits * 0.3);
   hp = Math.max(
     hp,
-    Math.round(playerDamage * (8 + profile.level * 0.6 + profile.upgrades * 0.16))
+    Math.round(
+      playerDamage * (7 + profile.level * 0.52 + Math.pow(Math.max(profile.upgrades, 1), 0.45) * 0.82)
+    )
   );
 
   const size = Math.min(
     WAVE_BOSS_MAX_SIZE - 8,
     Math.round(getWaveBossSize() * 0.9)
   );
-  const powerEase = clamp(profile.powerMult * 0.04, 0.75, 1.35);
+  const powerEase = clamp(0.82 + Math.log10(Math.max(10, profile.rating)) * 0.08, 0.82, 1.22);
   const speed = clamp(
-    (1.25 + profile.level * 0.014 + freeplayRunSeconds * 0.0018) * powerEase,
+    tuneZombieSpeed((1.18 + profile.level * 0.008 + freeplayRunSeconds * 0.0009) * powerEase),
     1.05,
-    2.8
+    getWaveBossSpeedCap(1)
   );
   const damage = Math.round(
-    (9 + freeplayRunSeconds * 0.045 + profile.level * 0.42 + profile.upgrades * 0.12) *
-      clamp(0.8 + profile.powerMult * 0.05, 0.8, 1.65)
+    (9 + freeplayRunSeconds * 0.048 + profile.level * 0.38 + Math.pow(Math.max(profile.upgrades, 1), 0.45) * 0.72) *
+      clamp(0.86 + Math.log10(Math.max(10, profile.rating)) * 0.05, 0.86, 1.38)
   );
 
   return { hp, size, speed, damage, hits };
@@ -5602,13 +6197,14 @@ function spawnFreeplayBoss() {
     freeplay: true,
     bossPhase: 1,
     size: stats.size,
-    speed: stats.speed,
+    speed: clampWaveBossSpeed(stats.speed, 1),
     damage: stats.damage,
-    hitCooldown: 36,
+    hitCooldown: 44,
     facingAngle: Math.atan2(toPlayerY, toPlayerX),
-    jitter: Math.random() * 0.4 + 0.55,
+    jitter: 1,
     skinStyle: pickZombieSkinStyle()
   });
+  initWaveBossAbilityTracking(zombies[zombies.length - 1]);
 
   freeplayLastBossAt = freeplayRunSeconds;
   showMilestone(`👹 Freeplay boss! ~${stats.hits} hits · scaled to your build`);
@@ -5810,36 +6406,38 @@ function spawnWave() {
     const roll = Math.random();
     let tier = "normal";
     let size = ZOMBIE_DRAW_SIZE;
-    let speed =
-      (0.6 + speedBonus + boost * 0.05 + (difficultyMultiplier - 1) * 0.08) *
-      (0.85 + ease * 0.2) *
-      zombieSpeedMult;
-    let damage = Math.round((6 + wave * 0.65) * difficultyMultiplier);
+    const threatBlend = 0.8 + (difficultyMultiplier - 1) * 0.34;
+    let speed = tuneZombieSpeed(
+      (0.84 + speedBonus + boost * 0.06 + (difficultyMultiplier - 1) * 0.06) *
+        (0.9 + ease * 0.22) *
+        zombieSpeedMult
+    );
+    let damage = Math.round((6 + wave * 0.68) * threatBlend);
 
     if (waveBossActive && i === 0) {
       tier = "tank";
       size = 88;
-      speed += wave <= 25 ? 0.02 : 0.05;
+      speed += tuneZombieSpeed(wave <= 25 ? 0.04 : 0.08);
       damage = Math.round(damage * 1.15);
     } else if (event.bossWave && i === 0 && !waveBossActive) {
       tier = "boss";
       size = 110;
-      speed += wave <= 25 ? 0.12 : 0.2;
+      speed += tuneZombieSpeed(wave <= 25 ? 0.16 : 0.26);
       damage = Math.round(damage * 2.1);
     } else if (roll < elites.boss && !waveBossActive) {
       tier = "boss";
       size = 110;
-      speed += wave <= 25 ? 0.1 : 0.18;
+      speed += tuneZombieSpeed(wave <= 25 ? 0.14 : 0.22);
       damage = Math.round(damage * 2.1);
     } else if (roll < elites.medium) {
       tier = "medium";
       size = 96;
-      speed += wave <= 25 ? 0.05 : 0.09;
+      speed += tuneZombieSpeed(wave <= 25 ? 0.08 : 0.14);
       damage = Math.round(damage * 1.45);
     } else if (roll < elites.tank) {
       tier = "tank";
       size = 88;
-      speed += wave <= 25 ? 0.02 : 0.05;
+      speed += tuneZombieSpeed(wave <= 25 ? 0.04 : 0.08);
       damage = Math.round(damage * 1.15);
     }
 
@@ -5894,6 +6492,17 @@ function spawnWave() {
     spawnWaveBoss();
   }
 
+  if (typeof playZombieGroan === "function" && specs.length > 0) {
+    const groans = Math.min(3, 1 + Math.floor(specs.length / 10));
+    for (let g = 0; g < groans; g += 1) {
+      setTimeout(() => {
+        if (gameRunning && !paused) {
+          playZombieGroan({ tier: g === 0 && elites.boss > 0 ? "boss" : "normal" });
+        }
+      }, 140 + g * 210);
+    }
+  }
+
 }
 
 
@@ -5907,6 +6516,7 @@ function startWave() {
     waveInProgress = true;
     checkWaveMilestonesOnStart();
     spawnWave();
+    if (typeof refreshKillStreakTimer === "function") refreshKillStreakTimer();
     updateUI();
     showCenterHudBriefly();
   }
@@ -6115,8 +6725,11 @@ function getWeaponUpgradePreview(weaponId, count) {
   const weapon = getWeaponById(weaponId);
   const current = getWeaponPower(weaponId);
   const nextLevel = getWeaponLevel(weaponId) + count;
-  const next = Math.max(1, Math.round((1 + nextLevel) * weapon.damageMult));
-  return `+${count} level · damage ${current} → ${next}`;
+  const next = Math.max(
+    1,
+    Math.round((1 + nextLevel * (1.08 + nextLevel * 0.035)) * weapon.damageMult)
+  );
+  return `+${count} level · damage ${current} → ${next} · zombies scale tougher · R helps clear`;
 }
 
 function applyUpgrades(type, count) {
@@ -6128,6 +6741,7 @@ function applyUpgrades(type, count) {
 
   player.skillPoints -= spend;
   player.upgrades[type] += spend;
+  playShopUpgradeFeedback();
 
   if (type === "hp") {
     player.maxHp += 50 * spend;
@@ -6156,7 +6770,7 @@ function openWeaponUpgradeMenu(weaponId) {
 
   if (titleEl) titleEl.textContent = `${weapon.emoji} ${weapon.name}`;
   if (descEl) {
-    descEl.textContent = `+1 damage per level (now: level ${getWeaponLevel(weaponId)}, ${getWeaponPower(weaponId)} damage)`;
+    descEl.textContent = `More damage, but zombies get tankier as you upgrade — use R bomb to burst them down (now: level ${getWeaponLevel(weaponId)}, ${getWeaponPower(weaponId)} dmg)`;
   }
   if (slider) {
     slider.min = "1";
@@ -6335,15 +6949,21 @@ function updateUI() {
     weaponHud.textContent = `${weapon.name} · Lv ${getWeaponLevel(weapon.id)} · ${getWeaponPower(weapon.id)} dmg`;
   }
 
-  const bombAttackHud = document.getElementById("bomb-attack-hud");
+  const bombAttackHud = document.getElementById("ability-hud");
   const bombAttackStatus = document.getElementById("bomb-attack-status");
   const bombAttackTimer = document.getElementById("bomb-attack-timer");
+  const pulseAttackStatus = document.getElementById("molotov-attack-status");
+  const pulseAttackTimer = document.getElementById("molotov-attack-timer");
+  const pulseAbilityChip = document.getElementById("molotov-ability-chip");
   if (bombAttackHud) {
     bombAttackHud.hidden = !gameRunning || isGameOverVisible();
   }
   syncBombCharges();
+  syncMolotovCharges();
   const cooldownMs = getBombCooldownRemainingMs();
   const onCooldown = bombCharges <= 0 && cooldownMs > 0;
+  const molotovCooldownMs = getMolotovCooldownRemainingMs();
+  const molotovOnCooldown = molotovCharges <= 0 && molotovCooldownMs > 0;
 
   if (bombAttackStatus) {
     if (!gameRunning || isGameOverVisible()) {
@@ -6369,7 +6989,39 @@ function updateUI() {
   }
 
   if (bombAttackHud) {
-    bombAttackHud.classList.toggle("cooldown", onCooldown);
+    bombAttackHud.classList.remove("cooldown");
+  }
+
+  const bombAbilityChip = document.getElementById("bomb-ability-chip");
+  if (bombAbilityChip) {
+    bombAbilityChip.classList.toggle("cooldown", onCooldown);
+  }
+
+  if (pulseAttackStatus) {
+    if (!gameRunning || isGameOverVisible()) {
+      pulseAttackStatus.textContent = `x${MOLOTOV_MAX_CHARGES}`;
+    } else if (molotovCharges > 0) {
+      pulseAttackStatus.textContent = `x${molotovCharges}`;
+    } else {
+      pulseAttackStatus.textContent = "0";
+    }
+  }
+
+  if (pulseAttackTimer) {
+    if (!gameRunning || isGameOverVisible()) {
+      pulseAttackTimer.textContent = "";
+      pulseAttackTimer.hidden = true;
+    } else if (molotovOnCooldown) {
+      pulseAttackTimer.hidden = false;
+      pulseAttackTimer.textContent = `${Math.ceil(molotovCooldownMs / 1000)}s`;
+    } else {
+      pulseAttackTimer.textContent = "";
+      pulseAttackTimer.hidden = true;
+    }
+  }
+
+  if (pulseAbilityChip) {
+    pulseAbilityChip.classList.toggle("cooldown", molotovOnCooldown);
   }
 
   if (skillPointsDisplay) skillPointsDisplay.innerText = player.skillPoints;
@@ -6483,9 +7135,13 @@ async function beginRun(mode = "campaign") {
 
   bullets = [];
   playerBombs = [];
+  playerMolotovs = [];
+  molotovFireZones = [];
   explosionEffects = [];
   bombCharges = BOMB_MAX_CHARGES;
   bombReadyAt = 0;
+  molotovCharges = MOLOTOV_MAX_CHARGES;
+  molotovReadyAt = 0;
 
   muzzleTracers = [];
   bulletAfterglows = [];
@@ -6621,9 +7277,13 @@ function returnToMainMenu() {
   zombies = [];
   bullets = [];
   playerBombs = [];
+  playerMolotovs = [];
+  molotovFireZones = [];
   explosionEffects = [];
   bombCharges = BOMB_MAX_CHARGES;
   bombReadyAt = 0;
+  molotovCharges = MOLOTOV_MAX_CHARGES;
+  molotovReadyAt = 0;
   muzzleTracers = [];
   bulletAfterglows = [];
   bloodEffects = [];
@@ -6738,6 +7398,229 @@ function syncBombCharges() {
     bombCharges = BOMB_MAX_CHARGES;
     bombReadyAt = 0;
   }
+}
+
+function syncMolotovCharges() {
+  if (molotovCharges > 0) return;
+  if (molotovReadyAt <= 0) return;
+  if (Date.now() >= molotovReadyAt) {
+    molotovCharges = MOLOTOV_MAX_CHARGES;
+    molotovReadyAt = 0;
+  }
+}
+
+function canThrowMolotov() {
+  if (!canPlayerShoot()) return false;
+  syncMolotovCharges();
+  return molotovCharges > 0;
+}
+
+function getMolotovCooldownRemainingMs() {
+  syncMolotovCharges();
+  if (molotovCharges > 0) return 0;
+  return Math.max(0, molotovReadyAt - Date.now());
+}
+
+function spawnMolotovFireZone(x, y) {
+  molotovFireZones.push({
+    x,
+    y,
+    radius: MOLOTOV_FIRE_RADIUS,
+    life: MOLOTOV_FIRE_LIFE,
+    maxLife: MOLOTOV_FIRE_LIFE,
+    tickTimer: 0,
+    flicker: Math.random() * Math.PI * 2
+  });
+  while (molotovFireZones.length > 8) molotovFireZones.shift();
+
+  const radius = MOLOTOV_FIRE_RADIUS;
+  pushExplosionEffect(x, y, radius * 0.22, "#fff4bf", { kind: "flash", life: 8, maxLife: 8 });
+  pushExplosionEffect(x, y, radius * 0.48, "#ff9844", { kind: "fire", life: 16, maxLife: 16 });
+  pushExplosionEffect(x, y, radius * 0.82, "#ff5522", { kind: "fire", life: 24, maxLife: 24 });
+  pushExplosionEffect(x, y, radius * 0.95, "#ffd166", {
+    kind: "ring",
+    life: 18,
+    maxLife: 18,
+    ringWidth: 8,
+    startRadius: radius * 0.14
+  });
+
+  for (let i = 0; i < 12; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 2 + Math.random() * 5;
+    const sparkLife = 16 + Math.floor(Math.random() * 14);
+    pushExplosionEffect(x, y, 2 + Math.random() * 4, Math.random() > 0.4 ? "#ffd166" : "#ff6622", {
+      kind: "spark",
+      life: sparkLife,
+      maxLife: sparkLife,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 0.8,
+      drag: 0.9,
+      gravity: 0.06
+    });
+  }
+
+  addScreenShake(3.2);
+  if (typeof playExplosionSound === "function") playExplosionSound();
+  spawnFloatingText(x, y - 22, "FIRE!", "#ffb04a", 1.12);
+}
+
+function throwMolotov() {
+  if (!canThrowMolotov()) return false;
+
+  const cx = player.x + PLAYER_SIZE / 2;
+  const cy = player.y + PLAYER_SIZE / 2;
+  let targetX = mouseTarget.x;
+  let targetY = mouseTarget.y;
+  let dx = targetX - cx;
+  let dy = targetY - cy;
+  let dist = Math.hypot(dx, dy);
+
+  if (dist < 48) {
+    const angle = player.facingAngle || 0;
+    targetX = cx + Math.cos(angle) * 160;
+    targetY = cy + Math.sin(angle) * 160;
+    dx = targetX - cx;
+    dy = targetY - cy;
+    dist = Math.hypot(dx, dy);
+  }
+
+  if (dist < 1) return false;
+
+  const travelDist = Math.min(dist, MOLOTOV_MAX_RANGE);
+  const ndx = dx / dist;
+  const ndy = dy / dist;
+
+  playerMolotovs.push({
+    x: cx,
+    y: cy,
+    dx: ndx,
+    dy: ndy,
+    speed: MOLOTOV_THROW_SPEED,
+    targetX: cx + ndx * travelDist,
+    targetY: cy + ndy * travelDist,
+    spawnedAt: Date.now(),
+    spin: Math.random() * Math.PI * 2
+  });
+
+  molotovCharges -= 1;
+  if (molotovCharges <= 0) {
+    molotovReadyAt = Date.now() + MOLOTOV_COOLDOWN_MS;
+  }
+
+  player.muzzleFlash = Math.max(player.muzzleFlash || 0, 3);
+  player.weaponRecoil = Math.min(0.16, (player.weaponRecoil || 0) + 0.08);
+  updateUI();
+  return true;
+}
+
+function updatePlayerMolotovs() {
+  for (let i = playerMolotovs.length - 1; i >= 0; i--) {
+    const bottle = playerMolotovs[i];
+    bottle.x += bottle.dx * bottle.speed;
+    bottle.y += bottle.dy * bottle.speed;
+    bottle.spin += 0.28;
+
+    const reachedTarget = Math.hypot(bottle.x - bottle.targetX, bottle.y - bottle.targetY) <= bottle.speed + 6;
+    const timedOut = Date.now() - bottle.spawnedAt >= MOLOTOV_MAX_FLIGHT_MS;
+
+    if (reachedTarget || timedOut) {
+      spawnMolotovFireZone(bottle.targetX, bottle.targetY);
+      playerMolotovs.splice(i, 1);
+    }
+  }
+}
+
+function updateMolotovFireZones() {
+  for (let i = molotovFireZones.length - 1; i >= 0; i--) {
+    const fire = molotovFireZones[i];
+    fire.life -= 1;
+    if (fire.life <= 0) {
+      molotovFireZones.splice(i, 1);
+      continue;
+    }
+
+    fire.tickTimer += 1;
+    if (fire.tickTimer < MOLOTOV_TICK_INTERVAL) continue;
+    fire.tickTimer = 0;
+
+    for (let j = zombies.length - 1; j >= 0; j--) {
+      const z = zombies[j];
+      const zcx = z.x + z.size / 2;
+      const zcy = z.y + z.size / 2;
+      const hitRadius = fire.radius + z.size * 0.24;
+      const dist = Math.hypot(fire.x - zcx, fire.y - zcy);
+      if (dist > hitRadius) continue;
+
+      const falloff = 1 - Math.min(1, dist / hitRadius) * 0.32;
+      const tickDamage = getMolotovTickDamageForZombie(z, falloff);
+      if (tickDamage <= 0) continue;
+      damageZombie(
+        z,
+        j,
+        { angle: Math.atan2(zcy - fire.y, zcx - fire.x), isMolotov: true },
+        tickDamage
+      );
+    }
+  }
+}
+
+function drawMolotovFireZones() {
+  for (const fire of molotovFireZones) {
+    const alpha = fire.life / fire.maxLife;
+    const flicker = 0.84 + Math.sin(fire.flicker + performance.now() * 0.011) * 0.16;
+    const radius = fire.radius * (0.94 + (1 - alpha) * 0.06);
+    const groundY = fire.y + radius * 0.1;
+
+    ctx.save();
+    ctx.globalAlpha = alpha * 0.46 * flicker;
+    const grad = ctx.createRadialGradient(fire.x, groundY, radius * 0.08, fire.x, groundY, radius);
+    grad.addColorStop(0, "rgba(255,236,150,0.62)");
+    grad.addColorStop(0.34, "rgba(255,120,36,0.5)");
+    grad.addColorStop(0.72, "rgba(190,48,8,0.34)");
+    grad.addColorStop(1, "rgba(70,8,0,0)");
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.ellipse(fire.x, groundY, radius, radius * 0.76, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.globalAlpha = alpha * 0.24;
+    ctx.strokeStyle = "rgba(255,170,70,0.5)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(fire.x, groundY, radius * 0.9, radius * 0.68, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function drawPlayerMolotovs() {
+  playerMolotovs.forEach((bottle) => {
+    ctx.save();
+    ctx.translate(bottle.x, bottle.y);
+    ctx.rotate(bottle.spin || 0);
+
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = "rgba(255,120,40,0.5)";
+    ctx.fillStyle = "#4a2818";
+    ctx.beginPath();
+    ctx.roundRect(-5, -10, 10, 18, 3);
+    ctx.fill();
+
+    ctx.fillStyle = "rgba(255,220,120,0.85)";
+    ctx.beginPath();
+    ctx.moveTo(6, -12);
+    ctx.lineTo(10, -16);
+    ctx.lineTo(8, -8);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = "#ff6622";
+    ctx.beginPath();
+    ctx.arc(9, -14, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  });
 }
 
 function canThrowBomb() {
@@ -6893,8 +7776,6 @@ function detonatePlayerBomb(bomb) {
     hurtFlash = Math.min(1, (hurtFlash || 0) + 0.18);
   }
 
-  const baseDamage = Math.round(getEffectivePlayerDamage() * BOMB_DAMAGE_MULT * getRunDamageMult());
-
   for (let i = zombies.length - 1; i >= 0; i--) {
     const z = zombies[i];
     const zcx = z.x + z.size / 2;
@@ -6903,12 +7784,14 @@ function detonatePlayerBomb(bomb) {
     const dist = Math.hypot(cx - zcx, cy - zcy);
     if (dist > hitRadius) continue;
 
-    const falloff = 1 - Math.min(1, dist / hitRadius) * 0.32;
+    const falloff = 1 - Math.min(1, dist / hitRadius) * 0.26;
+    const bombDamage = getBombDamageForZombie(z, falloff);
+    if (bombDamage <= 0) continue;
     damageZombie(
       z,
       i,
-      { angle: Math.atan2(zcy - cy, zcx - cx) },
-      Math.max(1, Math.round(baseDamage * falloff))
+      { angle: Math.atan2(zcy - cy, zcx - cx), isBomb: true },
+      bombDamage
     );
   }
 }
@@ -7059,6 +7942,7 @@ function fireWeapon(targetX, targetY) {
 
   player.weaponRecoil = Math.min(0.16, (player.weaponRecoil || 0) + 0.09);
   player.muzzleFlash = Math.max(player.muzzleFlash || 0, weapon.id === "shotgun" ? 4 : 3);
+  playGunshot();
 
   for (let i = 0; i < weapon.pellets; i++) {
     const spread = weapon.spread ? (Math.random() - 0.5) * weapon.spread * 2 : 0;
@@ -7294,19 +8178,21 @@ function update() {
 
 
 
-  if (keys["w"]) player.y -= player.speed * getRunMoveSpeedMult();
+  const moveSpeed = player.speed * getRunMoveSpeedMult();
+  let moveDx = 0;
+  let moveDy = 0;
 
-  if (keys["s"]) player.y += player.speed * getRunMoveSpeedMult();
-
-  if (keys["a"]) player.x -= player.speed * getRunMoveSpeedMult();
-
-  if (keys["d"]) player.x += player.speed * getRunMoveSpeedMult();
+  if (keys["w"]) moveDy -= moveSpeed;
+  if (keys["s"]) moveDy += moveSpeed;
+  if (keys["a"]) moveDx -= moveSpeed;
+  if (keys["d"]) moveDx += moveSpeed;
 
   updatePlayerFacing();
   updatePlayerAnimation();
 
+  player.x += moveDx;
+  player.y += moveDy;
   player.x = clamp(player.x, 0, WORLD_WIDTH - PLAYER_SIZE);
-
   player.y = clamp(player.y, 0, WORLD_HEIGHT - PLAYER_SIZE);
 
   updateCamera();
@@ -7343,6 +8229,8 @@ function update() {
   }
 
   updatePlayerBombs();
+  updatePlayerMolotovs();
+  updateMolotovFireZones();
 
 
 
@@ -7400,7 +8288,10 @@ function update() {
     const dx = playerCenterX - zombieCenterX;
     const dy = playerCenterY - zombieCenterY;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    const speed = z.speed || 1.2;
+    let speed = z.speed || 1.2;
+    if (isWaveBossZombie(z)) {
+      speed = getWaveBossChaseSpeed(speed, z.bossPhase || 1, dist, z.size || WAVE_BOSS_BASE_SIZE);
+    }
 
     let movedByArchetype = false;
     if (dist > 0.001) {
@@ -7566,17 +8457,14 @@ function drawArenaEnvironmentDecor(theme) {
   ctx.save();
   ctx.translate(camera.x * parallaxShift, camera.y * parallaxShift);
 
-  for (const bush of ARENA_CORNER_BUSHES) {
-    drawTopDownBush(ctx, bush.x, bush.y, bush.radius, theme);
+  for (const bush of ARENA_FOREST_BUSHES) {
+    ctx.globalAlpha = bush.alpha;
+    drawTopDownBush(ctx, bush.x, bush.y, bush.radius, theme, bush.rot);
   }
 
-  for (const prop of ARENA_SCATTER_PROPS) {
-    ctx.globalAlpha = prop.alpha;
-    if (prop.kind === "bush") {
-      drawTopDownBush(ctx, prop.x, prop.y, prop.radius, theme);
-    } else {
-      drawGroundStone(ctx, prop.x, prop.y, theme, Math.floor(prop.x + prop.y));
-    }
+  for (const stone of ARENA_SCATTER_STONES) {
+    ctx.globalAlpha = stone.alpha;
+    drawGroundStone(ctx, stone.x, stone.y, theme, Math.floor(stone.x + stone.y));
   }
 
   ctx.restore();
@@ -7660,6 +8548,8 @@ function draw() {
 
   drawBloodEffects();
 
+  drawMolotovFireZones();
+
   drawExplosionEffects();
 
   drawHpPickups();
@@ -7667,8 +8557,10 @@ function draw() {
   drawPlayer(theme);
 
   drawPlayerBombs();
+  drawPlayerMolotovs();
 
   drawFloatingTexts();
+  if (typeof drawKillJuice === "function") drawKillJuice();
   drawZombieProjectiles();
 
   zombies.forEach((z) => {
@@ -7948,6 +8840,10 @@ window.addEventListener("keydown", (e) => {
 
   if (e.key.toLowerCase() === "r" && !e.repeat) {
     throwBomb();
+  }
+
+  if (e.key.toLowerCase() === "t" && !e.repeat) {
+    throwMolotov();
   }
 
 });

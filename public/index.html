@@ -424,15 +424,24 @@ box-shadow:var(--shadow-frame);
 background:#041008;
 }
 
-.bomb-attack-hud[hidden]{
+.bomb-attack-hud[hidden],
+.ability-hud[hidden]{
 display:none !important;
 }
 
-.bomb-attack-hud{
+.ability-hud{
 position:absolute;
 left:14px;
 bottom:14px;
 z-index:12;
+display:flex;
+flex-direction:column;
+gap:8px;
+pointer-events:none;
+}
+
+.ability-chip,
+.bomb-attack-hud{
 display:flex;
 align-items:center;
 gap:10px;
@@ -441,15 +450,18 @@ border-radius:12px;
 background:rgba(4,16,8,0.82);
 border:1px solid rgba(255,136,68,0.35);
 box-shadow:0 8px 24px rgba(0,0,0,0.35);
-pointer-events:none;
 }
 
-.bomb-attack-hud.cooldown{
-border-color:rgba(255,120,80,0.22);
-background:rgba(8,10,12,0.88);
+.ability-chip.molotov{
+border-color:rgba(255,136,68,0.42);
 }
 
-.bomb-attack-key{
+.ability-chip.molotov.cooldown{
+border-color:rgba(180,90,40,0.24);
+}
+
+.bomb-attack-key,
+.ability-key{
 font-size:13px;
 font-weight:700;
 letter-spacing:0.04em;
@@ -457,7 +469,18 @@ color:#ffb884;
 text-transform:uppercase;
 }
 
-.bomb-attack-status{
+.ability-chip.molotov .ability-key{
+color:#ffb06a;
+}
+
+.ability-chip.cooldown,
+.bomb-attack-hud.cooldown{
+border-color:rgba(255,120,80,0.22);
+background:rgba(8,10,12,0.88);
+}
+
+.bomb-attack-status,
+.ability-status{
 min-width:34px;
 padding:4px 8px;
 border-radius:999px;
@@ -469,7 +492,14 @@ font-weight:700;
 text-align:center;
 }
 
-.bomb-attack-timer{
+.ability-chip.molotov .ability-status{
+background:rgba(255,120,40,0.14);
+border-color:rgba(255,120,40,0.3);
+color:#ffe2c4;
+}
+
+.bomb-attack-timer,
+.ability-timer{
 min-width:42px;
 padding:4px 8px;
 border-radius:999px;
@@ -479,6 +509,12 @@ color:#ffc1ad;
 font-size:12px;
 font-weight:700;
 text-align:center;
+}
+
+.ability-chip.molotov .ability-timer{
+background:rgba(200,90,30,0.14);
+border-color:rgba(200,90,30,0.28);
+color:#ffd4ad;
 }
 
 canvas{
@@ -4765,10 +4801,17 @@ TikTok @hulklives
 
 <div id="game-canvas-frame">
 <canvas id="c" width="1280" height="800"></canvas>
-<div id="bomb-attack-hud" class="bomb-attack-hud" hidden>
-<span class="bomb-attack-key">R = BOMB</span>
-<span class="bomb-attack-status" id="bomb-attack-status">x3</span>
-<span class="bomb-attack-timer" id="bomb-attack-timer" hidden></span>
+<div id="ability-hud" class="ability-hud" hidden>
+<div class="ability-chip" id="bomb-ability-chip">
+<span class="ability-key">R = BOMB</span>
+<span class="ability-status" id="bomb-attack-status">x3</span>
+<span class="ability-timer" id="bomb-attack-timer" hidden></span>
+</div>
+<div class="ability-chip molotov" id="molotov-ability-chip">
+<span class="ability-key">T = MOLOTOV</span>
+<span class="ability-status" id="molotov-attack-status">x2</span>
+<span class="ability-timer" id="molotov-attack-timer" hidden></span>
+</div>
 </div>
 <div id="bonus-offer">
 <h3>🎁 Bonus Chance!</h3>
@@ -5283,8 +5326,8 @@ TikTok @hulklives
 </div>
 </div>
 
-<script src="game-pro.js?v=3"></script>
-<script src="game.js?v=220"></script>
+<script src="game-pro.js?v=21"></script>
+<script src="game.js?v=243"></script>
 <script src="chat.js?v=2"></script>
 <script src="daily-challenges.js?v=2"></script>
 <script src="friends.js?v=5"></script>
