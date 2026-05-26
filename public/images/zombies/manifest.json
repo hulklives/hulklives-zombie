@@ -1,0 +1,22 @@
+{
+  "normal": {
+    "path": "images/zombies/zombie-normal.png",
+    "width": 360,
+    "height": 424
+  },
+  "tank": {
+    "path": "images/zombies/zombie-tank.png",
+    "width": 384,
+    "height": 499
+  },
+  "boss": {
+    "path": "images/zombies/zombie-boss.png",
+    "width": 384,
+    "height": 637
+  },
+  "golden": {
+    "path": "images/zombies/zombie-golden.png",
+    "width": 367,
+    "height": 513
+  }
+}

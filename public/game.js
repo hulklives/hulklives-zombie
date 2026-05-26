@@ -159,7 +159,7 @@ const WAVE_EVENTS = [
 
 
 
-const SPRITE_VERSION = 22;
+const SPRITE_VERSION = 23;
 
 function loadSpriteSheet(relativePath, frameCount, frameWidth, frameHeight, meta = {}) {
   const sheet = { img: new Image(), frameCount, frameWidth, frameHeight, ready: false, ...meta };
@@ -285,6 +285,60 @@ const zombieSprites = {
   move: loadSpriteSheet("images/zombie-move-sheet.png", 17, 288, 311),
   idle: loadSpriteSheet("images/zombie-idle-sheet.png", 17, 241, 222)
 };
+
+const ZOMBIE_VARIANT_META = {
+  normal: { width: 360, height: 424 },
+  tank: { width: 384, height: 499 },
+  boss: { width: 384, height: 637 },
+  golden: { width: 367, height: 513 }
+};
+
+const zombieVariantSprites = Object.fromEntries(
+  Object.entries(ZOMBIE_VARIANT_META).map(([key, meta]) => [
+    key,
+    loadSpriteSheet(`images/zombies/zombie-${key}.png`, 1, meta.width, meta.height, { variant: key })
+  ])
+);
+
+function getZombieVisualKey(z) {
+  if (z.golden) return "golden";
+  if (z.tier === "waveBoss" || z.isWaveBoss || z.tier === "boss") return "boss";
+  if (z.tier === "tank" || z.tier === "medium") return "tank";
+  return "normal";
+}
+
+function usesZombieVariantArt(z) {
+  const sheet = zombieVariantSprites[getZombieVisualKey(z)];
+  return Boolean(sheet?.ready);
+}
+
+function getZombieDrawSheet(z) {
+  const variantSheet = zombieVariantSprites[getZombieVisualKey(z)];
+  if (variantSheet?.ready) return variantSheet;
+  return (z.animTick || 0) > 0 ? zombieSprites.move : zombieSprites.idle;
+}
+
+function getZombieDrawMotion(z) {
+  if (!usesZombieVariantArt(z)) {
+    return {
+      frame: z.animFrame || 0,
+      cyOffset: 0,
+      angle: z.facingAngle || 0,
+      squashX: 1
+    };
+  }
+
+  const moving = (z.animTick || 0) > 0;
+  const bob = moving ? Math.sin((z.animFrame || 0) * 0.55) * z.size * 0.045 : 0;
+  const facingLeft = Math.cos(z.facingAngle || 0) < 0;
+
+  return {
+    frame: 0,
+    cyOffset: bob,
+    angle: 0,
+    squashX: facingLeft ? -1 : 1
+  };
+}
 
 const PLAYER_SIZE = 120;
 const PLAYER_VISUAL_SIZE = 97;
@@ -7101,7 +7155,8 @@ function update() {
       z.facingAngle = Math.atan2(dy, dx);
       z.animTick = (z.animTick || 0) + 1;
       if (z.animTick % 6 === 0) {
-        z.animFrame = ((z.animFrame || 0) + 1) % zombieSprites.move.frameCount;
+        const animFrames = usesZombieVariantArt(z) ? 24 : zombieSprites.move.frameCount;
+        z.animFrame = ((z.animFrame || 0) + 1) % animFrames;
       }
     }
   }
@@ -7296,11 +7351,15 @@ function draw() {
     const cy = z.y + z.size / 2;
     const isWaveBoss = z.tier === "waveBoss" || z.isWaveBoss;
     const archetypeDef = z.archetype ? ARCHETYPE_DEFS[z.archetype] : null;
-    const sheet = (z.animTick || 0) > 0 ? zombieSprites.move : zombieSprites.idle;
+    const variantArt = usesZombieVariantArt(z);
+    const sheet = getZombieDrawSheet(z);
+    const motion = getZombieDrawMotion(z);
 
-    drawArchetypeTint(z, cx, cy);
+    if (!variantArt) {
+      drawArchetypeTint(z, cx, cy);
+    }
     drawArchetypeTelegraph(z, cx, cy);
-    if (z.golden) {
+    if (z.golden && !variantArt) {
       ctx.save();
       ctx.globalAlpha = 0.24;
       ctx.fillStyle = "#ffd54a";
@@ -7313,19 +7372,19 @@ function draw() {
     if (
       !drawSpriteWithGlow(
         sheet,
-        z.animFrame || 0,
+        motion.frame,
         cx,
-        cy,
+        cy + motion.cyOffset,
         z.size,
-        z.facingAngle || 0,
+        motion.angle,
         isWaveBoss ? "#d050ff" : z.golden ? "#ffd54a" : archetypeDef?.glow || theme.zombieGlow,
         isWaveBoss
-          ? { blur: 26, alpha: 0.52 }
+          ? { blur: 26, alpha: 0.52, squashX: motion.squashX }
           : z.golden
-            ? { blur: 18, alpha: 0.45 }
+            ? { blur: 18, alpha: 0.45, squashX: motion.squashX }
             : archetypeDef
-              ? { blur: 16, alpha: 0.38 }
-              : undefined
+              ? { blur: 16, alpha: 0.38, squashX: motion.squashX }
+              : { squashX: motion.squashX }
       )
     ) {
       drawEntityShadow(cx, cy, z.size);
@@ -7341,7 +7400,7 @@ function draw() {
       ctx.fillRect(z.x, z.y, z.size, z.size);
     }
 
-    const barTop = z.y - 2;
+    const barTop = variantArt ? cy - z.size * 0.58 : z.y - 2;
     const barWidth = Math.max(34, z.size * 0.62);
     const isElite =
       isWaveBoss || z.tier === "boss" || z.tier === "medium" || z.tier === "tank";
