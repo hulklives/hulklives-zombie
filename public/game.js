@@ -159,7 +159,7 @@ const WAVE_EVENTS = [
 
 
 
-const SPRITE_VERSION = 24;
+const SPRITE_VERSION = 25;
 
 function loadSpriteSheet(relativePath, frameCount, frameWidth, frameHeight, meta = {}) {
   const sheet = { img: new Image(), frameCount, frameWidth, frameHeight, ready: false, ...meta };
@@ -292,22 +292,22 @@ const ZOMBIE_VARIANT_META = {
   normal: {
     idle: { path: "images/zombies/zombie-normal-idle-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
     move: { path: "images/zombies/zombie-normal-move-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
-    sizeMult: 1
+    sizeMult: 0.92
   },
   tank: {
     idle: { path: "images/zombies/zombie-tank-idle-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
     move: { path: "images/zombies/zombie-tank-move-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
-    sizeMult: 1.08
+    sizeMult: 0.98
   },
   boss: {
     idle: { path: "images/zombies/zombie-boss-idle-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
     move: { path: "images/zombies/zombie-boss-move-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
-    sizeMult: 1.18
+    sizeMult: 1.05
   },
   golden: {
     idle: { path: "images/zombies/zombie-golden-idle-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
     move: { path: "images/zombies/zombie-golden-move-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
-    sizeMult: 0.96
+    sizeMult: 0.9
   }
 };
 
@@ -365,7 +365,8 @@ function getZombieDrawMotion(z) {
       cyOffset: 0,
       angle: z.facingAngle || 0,
       squashX: 1,
-      drawSize: z.size
+      drawSize: z.size,
+      anchor: "center"
     };
   }
 
@@ -377,7 +378,8 @@ function getZombieDrawMotion(z) {
     cyOffset: 0,
     angle: 0,
     squashX: facingLeft ? -1 : 1,
-    drawSize: z.size * (set.sizeMult || 1)
+    drawSize: z.size * (set.sizeMult || 1),
+    anchor: "feet"
   };
 }
 
@@ -6917,6 +6919,8 @@ function drawSpriteSheet(sheet, frame, cx, cy, size, angle, options = {}) {
   const squashX = options.squashX ?? 1;
   const drawW = sheet.frameWidth * scale * squashX;
   const drawH = sheet.frameHeight * scale;
+  const anchor = options.anchor || "center";
+  const destY = anchor === "feet" ? -drawH : -drawH / 2;
 
   ctx.save();
   ctx.translate(cx, cy);
@@ -6932,7 +6936,7 @@ function drawSpriteSheet(sheet, frame, cx, cy, size, angle, options = {}) {
     sheet.frameWidth,
     sheet.frameHeight,
     -drawW / 2,
-    -drawH / 2,
+    destY,
     drawW,
     drawH
   );
@@ -7413,22 +7417,30 @@ function draw() {
       ctx.restore();
     }
 
+    const footY = z.y + z.size * 0.94;
+    const drawX = cx;
+    const drawY = variantArt ? footY : cy + motion.cyOffset;
+    const glowOptions = {
+      squashX: motion.squashX,
+      anchor: motion.anchor
+    };
+
     if (
       !drawSpriteWithGlow(
         sheet,
         motion.frame,
-        cx,
-        cy + motion.cyOffset,
+        drawX,
+        drawY,
         motion.drawSize,
         motion.angle,
         isWaveBoss ? "#d050ff" : z.golden ? "#ffd54a" : archetypeDef?.glow || theme.zombieGlow,
         isWaveBoss
-          ? { blur: 26, alpha: 0.52, squashX: motion.squashX }
+          ? { blur: 26, alpha: 0.52, ...glowOptions }
           : z.golden
-            ? { blur: 18, alpha: 0.45, squashX: motion.squashX }
+            ? { blur: 18, alpha: 0.45, ...glowOptions }
             : archetypeDef
-              ? { blur: 16, alpha: 0.38, squashX: motion.squashX }
-              : { squashX: motion.squashX }
+              ? { blur: 16, alpha: 0.38, ...glowOptions }
+              : glowOptions
       )
     ) {
       drawEntityShadow(cx, cy, z.size);
@@ -7444,7 +7456,7 @@ function draw() {
       ctx.fillRect(z.x, z.y, z.size, z.size);
     }
 
-    const barTop = variantArt ? cy - motion.drawSize * 0.58 : z.y - 2;
+    const barTop = variantArt ? footY - motion.drawSize * 0.94 : z.y - 2;
     const barWidth = Math.max(34, z.size * 0.62);
     const isElite =
       isWaveBoss || z.tier === "boss" || z.tier === "medium" || z.tier === "tank";

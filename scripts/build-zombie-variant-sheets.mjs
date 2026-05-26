@@ -22,14 +22,14 @@ const IDLE_FRAMES = [
 ];
 
 const MOVE_FRAMES = [
-  { scale: 1.0, dy: 0, lean: 0 },
-  { scale: 0.955, dy: 10, lean: -0.03 },
-  { scale: 1.03, dy: -8, lean: 0.02 },
-  { scale: 0.96, dy: 9, lean: -0.025 },
-  { scale: 1.025, dy: -7, lean: 0.03 },
-  { scale: 0.95, dy: 11, lean: -0.02 },
-  { scale: 1.035, dy: -9, lean: 0.025 },
-  { scale: 0.965, dy: 8, lean: -0.015 }
+  { scale: 1.0, dy: 0 },
+  { scale: 0.975, dy: 5 },
+  { scale: 1.02, dy: -4 },
+  { scale: 0.97, dy: 6 },
+  { scale: 1.015, dy: -3 },
+  { scale: 0.965, dy: 7 },
+  { scale: 1.025, dy: -5 },
+  { scale: 0.98, dy: 4 }
 ];
 
 function removeBackdrop(data, width, height) {
@@ -80,8 +80,9 @@ async function loadPreparedSource(variantId) {
 }
 
 async function renderFrame(sourceBuffer, keyframe) {
-  const meta = await sharp(sourceBuffer).metadata();
-  const targetHeight = Math.round(FRAME_SIZE * 0.78 * keyframe.scale);
+  const maxHeight = FRAME_SIZE * 0.66;
+  const footY = Math.round(FRAME_SIZE * 0.86);
+  const targetHeight = Math.round(maxHeight * keyframe.scale);
   const resized = await sharp(sourceBuffer)
     .resize({
       height: targetHeight,
@@ -93,27 +94,19 @@ async function renderFrame(sourceBuffer, keyframe) {
 
   const placed = await sharp(resized).metadata();
   const left = Math.round((FRAME_SIZE - placed.width) / 2);
-  const top = Math.round(FRAME_SIZE * 0.58 - placed.height + keyframe.dy);
+  const top = Math.round(footY - placed.height + keyframe.dy);
 
-  let frame = sharp({
+  return sharp({
     create: {
       width: FRAME_SIZE,
       height: FRAME_SIZE,
       channels: 4,
       background: { r: 0, g: 0, b: 0, alpha: 0 }
     }
-  }).composite([{ input: resized, left, top }]);
-
-  if (keyframe.lean) {
-    frame = frame.rotate(keyframe.lean * (180 / Math.PI), {
-      background: { r: 0, g: 0, b: 0, alpha: 0 }
-    }).resize(FRAME_SIZE, FRAME_SIZE, {
-      fit: "contain",
-      background: { r: 0, g: 0, b: 0, alpha: 0 }
-    });
-  }
-
-  return frame.png().toBuffer();
+  })
+    .composite([{ input: resized, left, top }])
+    .png()
+    .toBuffer();
 }
 
 async function buildSheet(sourceBuffer, frames, outPath) {
@@ -147,10 +140,10 @@ async function main() {
   fs.mkdirSync(sourceDir, { recursive: true });
   fs.mkdirSync(outDir, { recursive: true });
 
-  for (const variantId of ["normal", "tank", "boss", "golden"]) {
+  for (const variantId of VARIANTS) {
     const generated = path.join(root, "assets", `zombie-source-${variantId}.png`);
     const target = path.join(sourceDir, `zombie-${variantId}.png`);
-    if (fs.existsSync(generated) && !fs.existsSync(target)) {
+    if (fs.existsSync(generated)) {
       fs.copyFileSync(generated, target);
     }
   }
@@ -178,7 +171,7 @@ async function main() {
         frameWidth: FRAME_SIZE,
         frameHeight: FRAME_SIZE
       },
-      sizeMult: variantId === "boss" ? 1.18 : variantId === "tank" ? 1.08 : variantId === "golden" ? 0.96 : 1
+      sizeMult: variantId === "boss" ? 1.05 : variantId === "tank" ? 0.98 : variantId === "golden" ? 0.9 : 0.92
     };
 
     console.log(`Built animated sheets for ${variantId}`);
