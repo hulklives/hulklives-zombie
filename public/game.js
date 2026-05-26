@@ -159,7 +159,7 @@ const WAVE_EVENTS = [
 
 
 
-const SPRITE_VERSION = 27;
+const SPRITE_VERSION = 28;
 
 function loadSpriteSheet(relativePath, frameCount, frameWidth, frameHeight, meta = {}) {
   const sheet = { img: new Image(), frameCount, frameWidth, frameHeight, ready: false, ...meta };
@@ -288,6 +288,13 @@ const zombieSprites = {
 
 const ZOMBIE_VARIANT_FRAME_COUNT = 8;
 const ZOMBIE_VARIANT_FEET_RATIO = 0.96875;
+const ZOMBIE_VARIANT_FACING_OFFSET = -Math.PI / 2;
+
+function getZombieVariantDrawAngle(facingAngle) {
+  const step = Math.PI / 4;
+  const snapped = Math.round((facingAngle || 0) / step) * step;
+  return snapped + ZOMBIE_VARIANT_FACING_OFFSET;
+}
 
 const ZOMBIE_VARIANT_META = {
   normal: {
@@ -377,10 +384,10 @@ function getZombieDrawMotion(z) {
   return {
     frame: moving ? z.animFrame || 0 : 0,
     cyOffset: 0,
-    angle: z.facingAngle || 0,
+    angle: getZombieVariantDrawAngle(z.facingAngle),
     squashX: 1,
     drawSize: z.size * (set.sizeMult || 1),
-    anchor: "feet"
+    anchor: "center"
   };
 }
 
@@ -7189,6 +7196,10 @@ function update() {
     const speed = z.speed || 1.2;
 
     let movedByArchetype = false;
+    if (dist > 0.001) {
+      z.facingAngle = Math.atan2(dy, dx);
+    }
+
     if (dist > 0) {
       movedByArchetype = updateZombieArchetype(
         z,
@@ -7202,7 +7213,6 @@ function update() {
         z.x += (dx / dist) * speed * (z.jitter || 1);
         z.y += (dy / dist) * speed * (z.jitter || 1);
       }
-      z.facingAngle = Math.atan2(dy, dx);
       z.animTick = (z.animTick || 0) + 1;
       if (z.animTick % 8 === 0) {
         const animFrames = usesZombieVariantArt(z) ? ZOMBIE_VARIANT_FRAME_COUNT : zombieSprites.move.frameCount;
@@ -7425,9 +7435,8 @@ function draw() {
       ctx.restore();
     }
 
-    const footY = z.y + z.size;
     const drawX = cx;
-    const drawY = variantArt ? footY : cy + motion.cyOffset;
+    const drawY = cy + motion.cyOffset;
     const glowOptions = {
       squashX: motion.squashX,
       anchor: motion.anchor
@@ -7464,7 +7473,7 @@ function draw() {
       ctx.fillRect(z.x, z.y, z.size, z.size);
     }
 
-    const barTop = variantArt ? footY - motion.drawSize * 0.94 : z.y - 2;
+    const barTop = variantArt ? cy - motion.drawSize * 0.52 : z.y - 2;
     const barWidth = Math.max(34, z.size * 0.62);
     const isElite =
       isWaveBoss || z.tier === "boss" || z.tier === "medium" || z.tier === "tank";
