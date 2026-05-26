@@ -6340,6 +6340,7 @@ function goToMainMenuFromGameOver() {
   closeShopUpgradeMenu();
   closeSettingsMenu();
   closeAchievementsMenu();
+  if (typeof closeDailyChallengesMenu === "function") closeDailyChallengesMenu();
 
   saveProgress({ forceServer: true, quiet: true });
   if (typeof submitDailyRunProgress === "function") submitDailyRunProgress();
