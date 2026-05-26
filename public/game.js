@@ -159,7 +159,7 @@ const WAVE_EVENTS = [
 
 
 
-const SPRITE_VERSION = 32;
+const SPRITE_VERSION = 33;
 
 function loadSpriteSheet(relativePath, frameCount, frameWidth, frameHeight, meta = {}) {
   const sheet = { img: new Image(), frameCount, frameWidth, frameHeight, ready: false, ...meta };
@@ -287,6 +287,7 @@ const zombieSprites = {
 };
 
 const ZOMBIE_VARIANT_FRAME_COUNT = 8;
+const ZOMBIE_VARIANT_FACING_OFFSET = -Math.PI / 2;
 
 const ZOMBIE_VARIANT_META = {
   normal: {
@@ -379,8 +380,8 @@ function getZombieDrawMotion(z) {
 
   return {
     frame: moving ? z.animFrame || 0 : 0,
-    cyOffset: z.size * 0.18,
-    angle: z.facingAngle || 0,
+    cyOffset: z.size * 0.12,
+    angle: (z.facingAngle || 0) + ZOMBIE_VARIANT_FACING_OFFSET,
     squashX: 1,
     drawSize,
     shadowY: z.y + z.size * 0.94,

@@ -46,6 +46,7 @@ function removeBackdrop(data) {
 
 async function loadPreparedSource(variantId) {
   const candidates = [
+    path.join(root, "assets", `zombie-stand-${variantId}.png`),
     path.join(root, "assets", `zombie-topdown-${variantId}.png`),
     path.join(sourceDir, `zombie-${variantId}.png`),
     path.join(root, "assets", `zombie-source-${variantId}.png`)
@@ -140,10 +141,12 @@ async function main() {
   fs.mkdirSync(outDir, { recursive: true });
 
   for (const variantId of VARIANTS) {
+    const standing = path.join(root, "assets", `zombie-stand-${variantId}.png`);
     const topdown = path.join(root, "assets", `zombie-topdown-${variantId}.png`);
     const target = path.join(sourceDir, `zombie-${variantId}.png`);
-    if (fs.existsSync(topdown)) {
-      fs.copyFileSync(topdown, target);
+    const source = fs.existsSync(standing) ? standing : topdown;
+    if (fs.existsSync(source)) {
+      fs.copyFileSync(source, target);
     }
   }
 
