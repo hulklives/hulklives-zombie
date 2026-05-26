@@ -12,7 +12,7 @@
       "frameWidth": 640,
       "frameHeight": 640
     },
-    "sizeMult": 1.15
+    "sizeMult": 1.12
   },
   "tank": {
     "idle": {
@@ -27,7 +27,7 @@
       "frameWidth": 640,
       "frameHeight": 640
     },
-    "sizeMult": 1.22
+    "sizeMult": 1.18
   },
   "boss": {
     "idle": {
@@ -42,7 +42,7 @@
       "frameWidth": 640,
       "frameHeight": 640
     },
-    "sizeMult": 1.28
+    "sizeMult": 1.24
   },
   "golden": {
     "idle": {
@@ -57,6 +57,6 @@
       "frameWidth": 640,
       "frameHeight": 640
     },
-    "sizeMult": 1.12
+    "sizeMult": 1.1
   }
 }

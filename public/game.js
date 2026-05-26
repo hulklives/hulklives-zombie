@@ -159,7 +159,7 @@ const WAVE_EVENTS = [
 
 
 
-const SPRITE_VERSION = 28;
+const SPRITE_VERSION = 29;
 
 function loadSpriteSheet(relativePath, frameCount, frameWidth, frameHeight, meta = {}) {
   const sheet = { img: new Image(), frameCount, frameWidth, frameHeight, ready: false, ...meta };
@@ -287,35 +287,27 @@ const zombieSprites = {
 };
 
 const ZOMBIE_VARIANT_FRAME_COUNT = 8;
-const ZOMBIE_VARIANT_FEET_RATIO = 0.96875;
-const ZOMBIE_VARIANT_FACING_OFFSET = -Math.PI / 2;
-
-function getZombieVariantDrawAngle(facingAngle) {
-  const step = Math.PI / 4;
-  const snapped = Math.round((facingAngle || 0) / step) * step;
-  return snapped + ZOMBIE_VARIANT_FACING_OFFSET;
-}
 
 const ZOMBIE_VARIANT_META = {
   normal: {
     idle: { path: "images/zombies/zombie-normal-idle-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
     move: { path: "images/zombies/zombie-normal-move-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
-    sizeMult: 1.15
+    sizeMult: 1.12
   },
   tank: {
     idle: { path: "images/zombies/zombie-tank-idle-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
     move: { path: "images/zombies/zombie-tank-move-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
-    sizeMult: 1.22
+    sizeMult: 1.18
   },
   boss: {
     idle: { path: "images/zombies/zombie-boss-idle-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
     move: { path: "images/zombies/zombie-boss-move-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
-    sizeMult: 1.28
+    sizeMult: 1.24
   },
   golden: {
     idle: { path: "images/zombies/zombie-golden-idle-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
     move: { path: "images/zombies/zombie-golden-move-sheet.png", frameCount: 8, frameWidth: 640, frameHeight: 640 },
-    sizeMult: 1.12
+    sizeMult: 1.1
   }
 };
 
@@ -361,7 +353,7 @@ function usesZombieVariantArt(z) {
 function getZombieDrawSheet(z) {
   const set = getZombieVariantSet(z);
   if (usesZombieVariantArt(z)) {
-    return set.move;
+    return (z.animTick || 0) > 0 ? set.move : set.idle;
   }
   return (z.animTick || 0) > 0 ? zombieSprites.move : zombieSprites.idle;
 }
@@ -384,7 +376,7 @@ function getZombieDrawMotion(z) {
   return {
     frame: moving ? z.animFrame || 0 : 0,
     cyOffset: 0,
-    angle: getZombieVariantDrawAngle(z.facingAngle),
+    angle: z.facingAngle || 0,
     squashX: 1,
     drawSize: z.size * (set.sizeMult || 1),
     anchor: "center"
@@ -6928,8 +6920,7 @@ function drawSpriteSheet(sheet, frame, cx, cy, size, angle, options = {}) {
   const drawW = sheet.frameWidth * scale * squashX;
   const drawH = sheet.frameHeight * scale;
   const anchor = options.anchor || "center";
-  const destY =
-    anchor === "feet" ? -drawH * ZOMBIE_VARIANT_FEET_RATIO : -drawH / 2;
+  const destY = -drawH / 2;
 
   ctx.save();
   ctx.translate(cx, cy);

@@ -7,8 +7,6 @@ const sourceDir = path.join(root, "assets/zombie-sources");
 const outDir = path.join(root, "public/images/zombies");
 
 const FRAME_SIZE = 640;
-const FRAME_FOOT_PADDING = 20;
-const ZOMBIE_VARIANT_FEET_RATIO = (FRAME_SIZE - FRAME_FOOT_PADDING) / FRAME_SIZE;
 const FRAME_COUNT = 8;
 const VARIANTS = ["normal", "tank", "boss", "golden"];
 
@@ -34,7 +32,7 @@ const MOVE_FRAMES = [
   { scale: 0.996, dy: 0 }
 ];
 
-function removeBackdrop(data, width, height) {
+function removeBackdrop(data) {
   for (let i = 0; i < data.length; i += 4) {
     const r = data[i];
     const g = data[i + 1];
@@ -50,9 +48,9 @@ function removeBackdrop(data, width, height) {
 
 async function loadPreparedSource(variantId) {
   const candidates = [
+    path.join(root, "assets", `zombie-topdown-${variantId}.png`),
     path.join(sourceDir, `zombie-${variantId}.png`),
-    path.join(root, "assets", `zombie-source-${variantId}.png`),
-    path.join(root, "assets/zombie-variants-concept.png")
+    path.join(root, "assets", `zombie-source-${variantId}.png`)
   ];
 
   const sourcePath = candidates.find((candidate) => fs.existsSync(candidate));
@@ -60,43 +58,46 @@ async function loadPreparedSource(variantId) {
     throw new Error(`Missing source image for ${variantId}`);
   }
 
-  let pipeline = sharp(sourcePath).ensureAlpha();
-
-  if (sourcePath.endsWith("zombie-variants-concept.png")) {
-    const leftMap = { normal: 0, tank: 384, boss: 768, golden: 1152 };
-    pipeline = pipeline.extract({
-      left: leftMap[variantId],
-      top: 0,
-      width: 384,
-      height: 1024
-    });
-  }
-
-  const trimmed = await pipeline.trim({ threshold: 14 }).toBuffer();
+  const trimmed = await sharp(sourcePath).ensureAlpha().trim({ threshold: 14 }).toBuffer();
   const { data, info } = await sharp(trimmed).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-  removeBackdrop(data, info.width, info.height);
+  removeBackdrop(data);
 
   return sharp(data, {
     raw: { width: info.width, height: info.height, channels: 4 }
-  }).png().toBuffer();
+  })
+    .png()
+    .toBuffer();
 }
 
-async function renderFrame(sourceBuffer, keyframe) {
-  const maxHeight = FRAME_SIZE * 0.72;
-  const footY = FRAME_SIZE - FRAME_FOOT_PADDING;
-  const targetHeight = Math.round(maxHeight * keyframe.scale);
-  const resized = await sharp(sourceBuffer)
+async function renderFrame(sourceBuffer, keyframe, variantId) {
+  const baseMax =
+    variantId === "boss" ? 0.5 : variantId === "tank" ? 0.46 : variantId === "golden" ? 0.44 : 0.42;
+  const maxBox = FRAME_SIZE - 28;
+  let resized = await sharp(sourceBuffer)
     .resize({
-      height: targetHeight,
+      width: maxBox,
+      height: Math.round(FRAME_SIZE * baseMax * keyframe.scale),
       fit: "inside",
       withoutEnlargement: false,
       kernel: sharp.kernel.lanczos3
     })
     .toBuffer();
 
-  const placed = await sharp(resized).metadata();
-  const left = Math.round((FRAME_SIZE - placed.width) / 2);
-  const top = Math.round(footY - placed.height + keyframe.dy);
+  let placed = await sharp(resized).metadata();
+  if (placed.width > maxBox || placed.height > maxBox) {
+    resized = await sharp(resized)
+      .resize({
+        width: maxBox,
+        height: maxBox,
+        fit: "inside",
+        kernel: sharp.kernel.lanczos3
+      })
+      .toBuffer();
+    placed = await sharp(resized).metadata();
+  }
+
+  const left = Math.max(0, Math.round((FRAME_SIZE - placed.width) / 2));
+  const top = Math.max(0, Math.round((FRAME_SIZE - placed.height) / 2 + keyframe.dy));
 
   return sharp({
     create: {
@@ -111,22 +112,20 @@ async function renderFrame(sourceBuffer, keyframe) {
     .toBuffer();
 }
 
-async function buildSheet(sourceBuffer, frames, outPath) {
+async function buildSheet(sourceBuffer, frames, outPath, variantId) {
   const rendered = [];
   for (const keyframe of frames) {
-    rendered.push(await renderFrame(sourceBuffer, keyframe));
+    rendered.push(await renderFrame(sourceBuffer, keyframe, variantId));
   }
 
-  const sheet = sharp({
+  await sharp({
     create: {
       width: FRAME_SIZE * FRAME_COUNT,
       height: FRAME_SIZE,
       channels: 4,
       background: { r: 0, g: 0, b: 0, alpha: 0 }
     }
-  });
-
-  await sheet
+  })
     .composite(
       rendered.map((input, index) => ({
         input,
@@ -143,10 +142,10 @@ async function main() {
   fs.mkdirSync(outDir, { recursive: true });
 
   for (const variantId of VARIANTS) {
-    const generated = path.join(root, "assets", `zombie-source-${variantId}.png`);
+    const topdown = path.join(root, "assets", `zombie-topdown-${variantId}.png`);
     const target = path.join(sourceDir, `zombie-${variantId}.png`);
-    if (fs.existsSync(generated)) {
-      fs.copyFileSync(generated, target);
+    if (fs.existsSync(topdown)) {
+      fs.copyFileSync(topdown, target);
     }
   }
 
@@ -157,8 +156,8 @@ async function main() {
     const idlePath = path.join(outDir, `zombie-${variantId}-idle-sheet.png`);
     const movePath = path.join(outDir, `zombie-${variantId}-move-sheet.png`);
 
-    await buildSheet(sourceBuffer, IDLE_FRAMES, idlePath);
-    await buildSheet(sourceBuffer, MOVE_FRAMES, movePath);
+    await buildSheet(sourceBuffer, IDLE_FRAMES, idlePath, variantId);
+    await buildSheet(sourceBuffer, MOVE_FRAMES, movePath, variantId);
 
     manifest[variantId] = {
       idle: {
@@ -173,10 +172,10 @@ async function main() {
         frameWidth: FRAME_SIZE,
         frameHeight: FRAME_SIZE
       },
-      sizeMult: variantId === "boss" ? 1.28 : variantId === "tank" ? 1.22 : variantId === "golden" ? 1.12 : 1.15
+      sizeMult: variantId === "boss" ? 1.24 : variantId === "tank" ? 1.18 : variantId === "golden" ? 1.1 : 1.12
     };
 
-    console.log(`Built animated sheets for ${variantId}`);
+    console.log(`Built top-down sheets for ${variantId}`);
   }
 
   fs.writeFileSync(path.join(outDir, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
