@@ -159,7 +159,7 @@ const WAVE_EVENTS = [
 
 
 
-const SPRITE_VERSION = 26;
+const SPRITE_VERSION = 27;
 
 function loadSpriteSheet(relativePath, frameCount, frameWidth, frameHeight, meta = {}) {
   const sheet = { img: new Image(), frameCount, frameWidth, frameHeight, ready: false, ...meta };
@@ -287,6 +287,7 @@ const zombieSprites = {
 };
 
 const ZOMBIE_VARIANT_FRAME_COUNT = 8;
+const ZOMBIE_VARIANT_FEET_RATIO = 0.96875;
 
 const ZOMBIE_VARIANT_META = {
   normal: {
@@ -371,14 +372,13 @@ function getZombieDrawMotion(z) {
   }
 
   const set = getZombieVariantSet(z);
-  const facingLeft = Math.cos(z.facingAngle || 0) < 0;
   const moving = (z.animTick || 0) > 0;
 
   return {
     frame: moving ? z.animFrame || 0 : 0,
     cyOffset: 0,
-    angle: 0,
-    squashX: facingLeft ? -1 : 1,
+    angle: z.facingAngle || 0,
+    squashX: 1,
     drawSize: z.size * (set.sizeMult || 1),
     anchor: "feet"
   };
@@ -6921,7 +6921,8 @@ function drawSpriteSheet(sheet, frame, cx, cy, size, angle, options = {}) {
   const drawW = sheet.frameWidth * scale * squashX;
   const drawH = sheet.frameHeight * scale;
   const anchor = options.anchor || "center";
-  const destY = anchor === "feet" ? -drawH : -drawH / 2;
+  const destY =
+    anchor === "feet" ? -drawH * ZOMBIE_VARIANT_FEET_RATIO : -drawH / 2;
 
   ctx.save();
   ctx.translate(cx, cy);
@@ -7279,7 +7280,7 @@ function drawHealthBar(cx, top, hp, maxHp, options = {}) {
 }
 
 function drawEntityShadow(cx, cy, size, anchor = "center") {
-  const shadowY = anchor === "feet" ? cy + size * 0.03 : cy + size * 0.14;
+  const shadowY = anchor === "feet" ? cy + size * 0.015 : cy + size * 0.14;
   const shadowW = size * (anchor === "feet" ? 0.42 : 0.36);
   const shadowH = size * (anchor === "feet" ? 0.15 : 0.13);
   ctx.fillStyle = "rgba(0,0,0,0.42)";

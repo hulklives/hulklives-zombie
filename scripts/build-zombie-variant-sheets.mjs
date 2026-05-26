@@ -7,6 +7,8 @@ const sourceDir = path.join(root, "assets/zombie-sources");
 const outDir = path.join(root, "public/images/zombies");
 
 const FRAME_SIZE = 640;
+const FRAME_FOOT_PADDING = 20;
+const ZOMBIE_VARIANT_FEET_RATIO = (FRAME_SIZE - FRAME_FOOT_PADDING) / FRAME_SIZE;
 const FRAME_COUNT = 8;
 const VARIANTS = ["normal", "tank", "boss", "golden"];
 
@@ -80,8 +82,8 @@ async function loadPreparedSource(variantId) {
 }
 
 async function renderFrame(sourceBuffer, keyframe) {
-  const maxHeight = FRAME_SIZE * 0.66;
-  const footY = Math.round(FRAME_SIZE * 0.86);
+  const maxHeight = FRAME_SIZE * 0.72;
+  const footY = FRAME_SIZE - FRAME_FOOT_PADDING;
   const targetHeight = Math.round(maxHeight * keyframe.scale);
   const resized = await sharp(sourceBuffer)
     .resize({
