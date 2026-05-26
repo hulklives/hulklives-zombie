@@ -159,7 +159,7 @@ const WAVE_EVENTS = [
 
 
 
-const SPRITE_VERSION = 34;
+const SPRITE_VERSION = 35;
 
 function loadSpriteSheet(relativePath, frameCount, frameWidth, frameHeight, meta = {}) {
   const sheet = { img: new Image(), frameCount, frameWidth, frameHeight, ready: false, ...meta };
@@ -409,16 +409,33 @@ function getZombieDrawSheet(z) {
   return (z.animTick || 0) > 0 ? zombieSprites.move : zombieSprites.idle;
 }
 
+function getChibiZombieFacing(z) {
+  const pcx = player.x + PLAYER_SIZE / 2;
+  const pcy = player.y + PLAYER_SIZE / 2;
+  const zcx = z.x + z.size / 2;
+  const zcy = z.y + z.size / 2;
+  const dx = pcx - zcx;
+  const dy = pcy - zcy;
+  const dist = Math.max(Math.hypot(dx, dy), 1);
+  const faceRight = dx >= 0;
+  const lean = Math.max(-0.42, Math.min(0.42, (dy / dist) * 0.42));
+
+  return {
+    squashX: faceRight ? 1 : -1,
+    angle: lean
+  };
+}
+
 function getZombieDrawMotion(z) {
   if (usesChibiZombieSkin(z)) {
     const moving = (z.animTick || 0) > 0;
-    const facingLeft = Math.cos(z.facingAngle || 0) < 0;
+    const facing = getChibiZombieFacing(z);
     const bob = moving ? Math.sin((z.animFrame || 0) * 0.65) * z.size * 0.035 : 0;
     return {
       frame: 0,
       cyOffset: bob,
-      angle: 0,
-      squashX: facingLeft ? -1 : 1,
+      angle: facing.angle,
+      squashX: facing.squashX,
       drawSize: z.size * 1.22,
       anchor: "center"
     };
