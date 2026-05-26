@@ -192,6 +192,7 @@ function loadStaticImage(relativePath, meta = {}) {
 
 const TERRAIN_TILE = 48;
 const BACKGROUND_VERSION = 2;
+const TREE_DECOR_VERSION = 1;
 const BACKGROUND_TILE = 256;
 let groundCache = { ready: false, canvas: null };
 const backgroundFloor = new Image();
@@ -199,6 +200,13 @@ backgroundFloor.src = `images/background/horror-floor.png?v=${BACKGROUND_VERSION
 backgroundFloor.onload = () => {
   groundCache.ready = false;
 };
+
+const treeDecorImage = new Image();
+let treeDecorReady = false;
+treeDecorImage.onload = () => {
+  treeDecorReady = true;
+};
+treeDecorImage.src = `images/decor/tree.png?v=${TREE_DECOR_VERSION}`;
 
 function backgroundTextureReady() {
   return backgroundFloor.complete && backgroundFloor.naturalWidth > 0;
@@ -208,6 +216,26 @@ function hash2D(x, y, seed) {
   const n = Math.sin(x * 127.1 + y * 311.7 + seed * 41.9) * 43758.5453;
   return n - Math.floor(n);
 }
+
+const ARENA_TREES = (() => {
+  const trees = [];
+  let seed = 0;
+  while (trees.length < 36 && seed < 500) {
+    const x = 70 + hash2D(seed, 3, 777) * (WORLD_WIDTH - 140);
+    const y = 70 + hash2D(seed, 9, 778) * (WORLD_HEIGHT - 140);
+    seed += 1;
+    const dist = Math.hypot(x - WORLD_WIDTH / 2, y - WORLD_HEIGHT / 2);
+    if (dist < 190) continue;
+    trees.push({
+      x,
+      y,
+      scale: 0.68 + hash2D(seed, 13, 779) * 0.52,
+      flip: hash2D(seed, 21, 780) > 0.5 ? -1 : 1,
+      alpha: 0.82 + hash2D(seed, 29, 781) * 0.14
+    });
+  }
+  return trees;
+})();
 
 
 function buildGroundCanvas(theme) {
@@ -7435,8 +7463,38 @@ function drawGrassField(theme) {
   ctx.drawImage(groundCache.canvas, 0, 0);
 }
 
+function drawArenaTrees() {
+  if (!treeDecorReady || treeDecorImage.naturalWidth <= 0) return;
+
+  const baseW = treeDecorImage.naturalWidth;
+  const baseH = treeDecorImage.naturalHeight;
+
+  for (const tree of ARENA_TREES) {
+    const w = baseW * tree.scale * 0.58;
+    const h = baseH * tree.scale * 0.58;
+    const footY = tree.y;
+
+    ctx.save();
+    ctx.globalAlpha = tree.alpha;
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    ctx.beginPath();
+    ctx.ellipse(tree.x, footY + h * 0.04, w * 0.22, h * 0.05, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.translate(tree.x, footY);
+    ctx.scale(tree.flip, 1);
+    ctx.imageSmoothingEnabled = true;
+    if ("imageSmoothingQuality" in ctx) {
+      ctx.imageSmoothingQuality = "high";
+    }
+    ctx.drawImage(treeDecorImage, -w / 2, -h * 0.92, w, h);
+    ctx.restore();
+  }
+}
+
 function drawWorldBackground(theme) {
   drawGrassField(theme);
+  drawArenaTrees();
   drawArenaAtmosphere(theme);
 
   const event = getCurrentEvent();
