@@ -191,8 +191,7 @@ function loadStaticImage(relativePath, meta = {}) {
 }
 
 const TERRAIN_TILE = 48;
-const BACKGROUND_VERSION = 2;
-const TREE_DECOR_VERSION = 1;
+const BACKGROUND_VERSION = 3;
 const BACKGROUND_TILE = 256;
 let groundCache = { ready: false, canvas: null };
 const backgroundFloor = new Image();
@@ -200,13 +199,6 @@ backgroundFloor.src = `images/background/horror-floor.png?v=${BACKGROUND_VERSION
 backgroundFloor.onload = () => {
   groundCache.ready = false;
 };
-
-const treeDecorImage = new Image();
-let treeDecorReady = false;
-treeDecorImage.onload = () => {
-  treeDecorReady = true;
-};
-treeDecorImage.src = `images/decor/tree.png?v=${TREE_DECOR_VERSION}`;
 
 function backgroundTextureReady() {
   return backgroundFloor.complete && backgroundFloor.naturalWidth > 0;
@@ -217,13 +209,116 @@ function hash2D(x, y, seed) {
   return n - Math.floor(n);
 }
 
-const ARENA_TREE_INSET = 120;
-const ARENA_TREES = [
-  { x: ARENA_TREE_INSET, y: ARENA_TREE_INSET, scale: 0.44, flip: 1, alpha: 0.88 },
-  { x: WORLD_WIDTH - ARENA_TREE_INSET, y: ARENA_TREE_INSET, scale: 0.42, flip: -1, alpha: 0.86 },
-  { x: ARENA_TREE_INSET, y: WORLD_HEIGHT - ARENA_TREE_INSET, scale: 0.46, flip: -1, alpha: 0.87 },
-  { x: WORLD_WIDTH - ARENA_TREE_INSET, y: WORLD_HEIGHT - ARENA_TREE_INSET, scale: 0.43, flip: 1, alpha: 0.85 }
+const ARENA_CORNER_BUSHES = [
+  { x: 105, y: 105, radius: 62 },
+  { x: WORLD_WIDTH - 105, y: 105, radius: 58 },
+  { x: 105, y: WORLD_HEIGHT - 105, radius: 64 },
+  { x: WORLD_WIDTH - 105, y: WORLD_HEIGHT - 105, radius: 56 }
 ];
+
+const ARENA_SCATTER_PROPS = (() => {
+  const props = [];
+  let seed = 0;
+  while (props.length < 18 && seed < 400) {
+    const x = 150 + hash2D(seed, 1, 820) * (WORLD_WIDTH - 300);
+    const y = 150 + hash2D(seed, 2, 821) * (WORLD_HEIGHT - 300);
+    seed += 1;
+    if (Math.hypot(x - WORLD_WIDTH / 2, y - WORLD_HEIGHT / 2) < 270) continue;
+    props.push({
+      x,
+      y,
+      kind: hash2D(seed, 3, 822) < 0.58 ? "bush" : "stone",
+      radius: 16 + hash2D(seed, 4, 823) * 20,
+      alpha: 0.74 + hash2D(seed, 5, 824) * 0.2
+    });
+  }
+  return props;
+})();
+
+function drawTopDownBush(drawCtx, x, y, radius, theme) {
+  drawCtx.save();
+  drawCtx.translate(x, y);
+  drawCtx.fillStyle = "rgba(0,0,0,0.18)";
+  drawCtx.beginPath();
+  drawCtx.ellipse(0, radius * 0.14, radius * 0.7, radius * 0.26, 0, 0, Math.PI * 2);
+  drawCtx.fill();
+
+  const clusters = [
+    { ox: -radius * 0.26, oy: -radius * 0.06, r: radius * 0.5, shade: theme.grassDark },
+    { ox: radius * 0.2, oy: -radius * 0.1, r: radius * 0.46, shade: theme.grass },
+    { ox: 0, oy: -radius * 0.2, r: radius * 0.56, shade: theme.grassLight },
+    { ox: -radius * 0.06, oy: radius * 0.08, r: radius * 0.38, shade: theme.grassDark }
+  ];
+  for (const cluster of clusters) {
+    drawCtx.fillStyle = cluster.shade;
+    drawCtx.globalAlpha = 0.9;
+    drawCtx.beginPath();
+    drawCtx.arc(cluster.ox, cluster.oy, cluster.r, 0, Math.PI * 2);
+    drawCtx.fill();
+  }
+
+  drawCtx.fillStyle = theme.grassLight;
+  drawCtx.globalAlpha = 0.32;
+  drawCtx.beginPath();
+  drawCtx.arc(-radius * 0.16, -radius * 0.26, radius * 0.11, 0, Math.PI * 2);
+  drawCtx.fill();
+  drawCtx.restore();
+}
+
+function drawGroundStone(drawCtx, x, y, theme, seed) {
+  const size = 3 + hash2D(seed, 8, 504) * 7;
+  const rot = hash2D(seed, 9, 505) * Math.PI;
+  drawCtx.save();
+  drawCtx.translate(x, y);
+  drawCtx.rotate(rot);
+  drawCtx.fillStyle = theme.path;
+  drawCtx.globalAlpha = 0.34 + hash2D(seed, 10, 506) * 0.24;
+  drawCtx.beginPath();
+  drawCtx.ellipse(0, 0, size * 1.15, size * 0.82, 0, 0, Math.PI * 2);
+  drawCtx.fill();
+  drawCtx.restore();
+}
+
+function drawGrassTuft(drawCtx, x, y, theme, seed) {
+  const blades = 4 + Math.floor(hash2D(seed, 11, 507) * 4);
+  drawCtx.save();
+  drawCtx.translate(x, y);
+  for (let b = 0; b < blades; b += 1) {
+    const ang = -Math.PI / 2 + (hash2D(seed, b, 508) - 0.5) * 1.15;
+    const len = 4 + hash2D(seed, b + 3, 509) * 8;
+    drawCtx.strokeStyle = hash2D(seed, b, 510) > 0.5 ? theme.grassLight : theme.grassDark;
+    drawCtx.globalAlpha = 0.34 + hash2D(seed, b, 511) * 0.28;
+    drawCtx.lineWidth = 1.1;
+    drawCtx.beginPath();
+    drawCtx.moveTo(0, 0);
+    drawCtx.lineTo(Math.cos(ang) * len, Math.sin(ang) * len);
+    drawCtx.stroke();
+  }
+  drawCtx.restore();
+}
+
+function drawDirtPatch(drawCtx, x, y, theme, seed) {
+  const rx = 8 + hash2D(seed, 12, 512) * 16;
+  const ry = 6 + hash2D(seed, 13, 513) * 12;
+  drawCtx.fillStyle = theme.groundDark;
+  drawCtx.globalAlpha = 0.12 + hash2D(seed, 14, 514) * 0.1;
+  drawCtx.beginPath();
+  drawCtx.ellipse(x, y, rx, ry, hash2D(seed, 15, 515) * Math.PI, 0, Math.PI * 2);
+  drawCtx.fill();
+}
+
+function paintGroundDecor(drawCtx, theme) {
+  for (let i = 0; i < 165; i += 1) {
+    const x = hash2D(i, 1, 501) * WORLD_WIDTH;
+    const y = hash2D(i, 2, 502) * WORLD_HEIGHT;
+    if (Math.hypot(x - WORLD_WIDTH / 2, y - WORLD_HEIGHT / 2) < 210) continue;
+    const kind = hash2D(i, 3, 503);
+    if (kind < 0.42) drawGrassTuft(drawCtx, x, y, theme, i);
+    else if (kind < 0.78) drawGroundStone(drawCtx, x, y, theme, i);
+    else drawDirtPatch(drawCtx, x, y, theme, i);
+  }
+  drawCtx.globalAlpha = 1;
+}
 
 
 function buildGroundCanvas(theme) {
@@ -302,6 +397,8 @@ function buildGroundCanvas(theme) {
     }
     g.globalAlpha = 1;
   }
+
+  paintGroundDecor(g, theme);
 
   const vignette = g.createRadialGradient(cx, cy, maxR * 0.22, cx, cy, maxR);
   vignette.addColorStop(0, "rgba(0,0,0,0)");
@@ -7451,39 +7548,59 @@ function drawGrassField(theme) {
   ctx.drawImage(groundCache.canvas, 0, 0);
 }
 
-function drawArenaTrees() {
-  if (!treeDecorReady || treeDecorImage.naturalWidth <= 0) return;
+function drawArenaEnvironmentDecor(theme) {
+  const parallaxShift = 0.07;
+  ctx.save();
+  ctx.translate(camera.x * parallaxShift, camera.y * parallaxShift);
 
-  const baseW = treeDecorImage.naturalWidth;
-  const baseH = treeDecorImage.naturalHeight;
-
-  for (const tree of ARENA_TREES) {
-    const w = baseW * tree.scale * 0.38;
-    const h = baseH * tree.scale * 0.38;
-    const footY = tree.y;
-
-    ctx.save();
-    ctx.globalAlpha = tree.alpha;
-    ctx.fillStyle = "rgba(0,0,0,0.16)";
-    ctx.beginPath();
-    ctx.ellipse(tree.x, footY + h * 0.04, w * 0.2, h * 0.045, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.translate(tree.x, footY);
-    ctx.scale(tree.flip, 1);
-    ctx.imageSmoothingEnabled = true;
-    if ("imageSmoothingQuality" in ctx) {
-      ctx.imageSmoothingQuality = "high";
-    }
-    ctx.drawImage(treeDecorImage, -w / 2, -h * 0.92, w, h);
-    ctx.restore();
+  for (const bush of ARENA_CORNER_BUSHES) {
+    drawTopDownBush(ctx, bush.x, bush.y, bush.radius, theme);
   }
+
+  for (const prop of ARENA_SCATTER_PROPS) {
+    ctx.globalAlpha = prop.alpha;
+    if (prop.kind === "bush") {
+      drawTopDownBush(ctx, prop.x, prop.y, prop.radius, theme);
+    } else {
+      drawGroundStone(ctx, prop.x, prop.y, theme, Math.floor(prop.x + prop.y));
+    }
+  }
+
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
+
+function drawAmbientParticles(theme) {
+  const t = performance.now() * 0.001;
+  ctx.save();
+
+  for (let i = 0; i < 42; i += 1) {
+    const seed = i + 1;
+    const baseX = hash2D(seed, 1, 601) * WORLD_WIDTH;
+    const baseY = hash2D(seed, 2, 602) * WORLD_HEIGHT;
+    const drift = 12 + hash2D(seed, 3, 603) * 18;
+    const speed = 0.25 + hash2D(seed, 4, 604) * 0.35;
+    const phase = hash2D(seed, 5, 605) * Math.PI * 2;
+    const x = baseX + Math.sin(t * speed + phase) * drift;
+    const y = (baseY - ((t * (14 + hash2D(seed, 6, 606) * 10)) % (WORLD_HEIGHT + 30))) + 15;
+    const size = 1 + hash2D(seed, 7, 607) * 2;
+
+    ctx.fillStyle = theme.speckle;
+    ctx.globalAlpha = 0.08 + hash2D(seed, 8, 608) * 0.14;
+    ctx.beginPath();
+    ctx.arc(x, y, size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+  ctx.globalAlpha = 1;
 }
 
 function drawWorldBackground(theme) {
   drawGrassField(theme);
-  drawArenaTrees();
+  drawArenaEnvironmentDecor(theme);
   drawArenaAtmosphere(theme);
+  drawAmbientParticles(theme);
 
   const event = getCurrentEvent();
   if (event.tint) {
