@@ -238,30 +238,43 @@ const ARENA_SCATTER_PROPS = (() => {
 function drawTopDownBush(drawCtx, x, y, radius, theme) {
   drawCtx.save();
   drawCtx.translate(x, y);
-  drawCtx.fillStyle = "rgba(0,0,0,0.18)";
+
+  drawCtx.fillStyle = "rgba(0,0,0,0.2)";
   drawCtx.beginPath();
-  drawCtx.ellipse(0, radius * 0.14, radius * 0.7, radius * 0.26, 0, 0, Math.PI * 2);
+  drawCtx.ellipse(radius * 0.06, radius * 0.16, radius * 0.52, radius * 0.2, 0.25, 0, Math.PI * 2);
   drawCtx.fill();
 
-  const clusters = [
-    { ox: -radius * 0.26, oy: -radius * 0.06, r: radius * 0.5, shade: theme.grassDark },
-    { ox: radius * 0.2, oy: -radius * 0.1, r: radius * 0.46, shade: theme.grass },
-    { ox: 0, oy: -radius * 0.2, r: radius * 0.56, shade: theme.grassLight },
-    { ox: -radius * 0.06, oy: radius * 0.08, r: radius * 0.38, shade: theme.grassDark }
+  drawCtx.fillStyle = "rgba(88, 58, 34, 0.95)";
+  drawCtx.beginPath();
+  drawCtx.ellipse(0, radius * 0.05, radius * 0.12, radius * 0.15, 0, 0, Math.PI * 2);
+  drawCtx.fill();
+  drawCtx.strokeStyle = "rgba(0,0,0,0.28)";
+  drawCtx.lineWidth = 1.1;
+  drawCtx.stroke();
+
+  const lobes = [
+    { ox: -radius * 0.34, oy: -radius * 0.16, rx: radius * 0.34, ry: radius * 0.26, rot: -0.45, shade: theme.grassDark },
+    { ox: radius * 0.3, oy: -radius * 0.2, rx: radius * 0.3, ry: radius * 0.24, rot: 0.4, shade: theme.grass },
+    { ox: 0.04, oy: -radius * 0.36, rx: radius * 0.36, ry: radius * 0.28, rot: 0.12, shade: theme.grassLight },
+    { ox: -radius * 0.06, oy: -radius * 0.06, rx: radius * 0.26, ry: radius * 0.2, rot: -0.2, shade: theme.grassDark },
+    { ox: radius * 0.1, oy: -radius * 0.04, rx: radius * 0.22, ry: radius * 0.18, rot: 0.55, shade: theme.grass }
   ];
-  for (const cluster of clusters) {
-    drawCtx.fillStyle = cluster.shade;
+
+  for (const lobe of lobes) {
+    drawCtx.save();
+    drawCtx.translate(lobe.ox, lobe.oy);
+    drawCtx.rotate(lobe.rot);
+    drawCtx.fillStyle = lobe.shade;
     drawCtx.globalAlpha = 0.9;
     drawCtx.beginPath();
-    drawCtx.arc(cluster.ox, cluster.oy, cluster.r, 0, Math.PI * 2);
+    drawCtx.ellipse(0, 0, lobe.rx, lobe.ry, 0, 0, Math.PI * 2);
     drawCtx.fill();
+    drawCtx.strokeStyle = "rgba(0,0,0,0.14)";
+    drawCtx.lineWidth = 1;
+    drawCtx.stroke();
+    drawCtx.restore();
   }
 
-  drawCtx.fillStyle = theme.grassLight;
-  drawCtx.globalAlpha = 0.32;
-  drawCtx.beginPath();
-  drawCtx.arc(-radius * 0.16, -radius * 0.26, radius * 0.11, 0, Math.PI * 2);
-  drawCtx.fill();
   drawCtx.restore();
 }
 
