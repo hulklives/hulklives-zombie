@@ -6290,6 +6290,7 @@ function returnToMainMenu() {
   closeShopUpgradeMenu();
   closeSettingsMenu();
   closeAchievementsMenu();
+  if (typeof closeDailyChallengesMenu === "function") closeDailyChallengesMenu();
 
   if (zombieSpawner) {
     clearInterval(zombieSpawner);

@@ -36,11 +36,20 @@ function formatDailyResetLabel(resetsAt) {
 }
 
 function updateDailyMenuBadge() {
-  const badge = document.getElementById("daily-menu-badge");
-  if (!badge || !dailyState) return;
-  const claimable = Number(dailyState.claimableCount || 0);
-  badge.textContent = String(claimable);
-  badge.hidden = claimable <= 0;
+  const claimable = Number(dailyState?.claimableCount || 0);
+  for (const id of ["daily-menu-badge", "daily-game-badge"]) {
+    const badge = document.getElementById(id);
+    if (!badge) continue;
+    badge.textContent = String(claimable);
+    badge.hidden = claimable <= 0;
+  }
+}
+
+function shouldRefreshDailyUi() {
+  if (!hasDailyAuth()) return false;
+  if (typeof isStartMenuVisible === "function" && isStartMenuVisible()) return true;
+  if (typeof gameRunning !== "undefined" && gameRunning) return true;
+  return false;
 }
 
 function renderDailyChallengesModal() {
@@ -181,6 +190,8 @@ function openDailyChallengesMenu() {
   if (!modal) return;
   if (typeof isStartMenuVisible === "function" && isStartMenuVisible()) {
     if (typeof hideStartMenu === "function") hideStartMenu();
+  } else if (typeof pauseForRunModal === "function" && typeof gameRunning !== "undefined" && gameRunning) {
+    pauseForRunModal("daily");
   }
   modal.classList.add("open");
   modal.setAttribute("aria-hidden", "false");
@@ -194,8 +205,9 @@ function closeDailyChallengesMenu() {
     modal.classList.remove("open");
     modal.setAttribute("aria-hidden", "true");
   }
-  if (wasOpen && typeof restoreStartMenuAfterModal === "function") {
-    restoreStartMenuAfterModal();
+  if (wasOpen) {
+    if (typeof resumeFromRunModal === "function") resumeFromRunModal("daily");
+    if (typeof restoreStartMenuAfterModal === "function") restoreStartMenuAfterModal();
   }
 }
 
@@ -249,9 +261,7 @@ function initDailyChallengesPanel() {
   resetRunDailyStats();
   if (dailyPollTimer) clearInterval(dailyPollTimer);
   dailyPollTimer = setInterval(() => {
-    if (typeof isStartMenuVisible === "function" && isStartMenuVisible()) {
-      refreshDailyChallenges(false);
-    }
+    if (shouldRefreshDailyUi()) refreshDailyChallenges(false);
   }, DAILY_POLL_MS);
 }
 
