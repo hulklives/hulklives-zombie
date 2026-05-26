@@ -3246,10 +3246,15 @@ function segmentIntersectsCircle(x1, y1, x2, y2, cx, cy, radius) {
   return ddx * ddx + ddy * ddy <= rSq;
 }
 
+function getZombieHitRadius(zombie) {
+  const boss = zombie?.tier === "waveBoss" || zombie?.isWaveBoss;
+  return zombie.size * (boss ? 0.54 : 0.56) + BULLET_SIZE * 0.85;
+}
+
 function getBulletZombieHitInfo(bullet, zombie) {
   const cx = zombie.x + zombie.size / 2;
   const cy = zombie.y + zombie.size / 2;
-  const hitRadius = zombie.size * 0.52 + BULLET_SIZE * 0.75;
+  const hitRadius = getZombieHitRadius(zombie);
   const x1 = bullet.prevX ?? bullet.x;
   const y1 = bullet.prevY ?? bullet.y;
   const x2 = bullet.x;
@@ -4364,8 +4369,81 @@ function rollCritHit() {
   return Math.random() < 0.12;
 }
 
+function processBulletHit(bullet, hitIndex) {
+  const zombie = zombies[hitIndex];
+  if (!zombie) return "remove";
+  if (!bullet.hitZombies) bullet.hitZombies = new Set();
+  if (bullet.hitZombies.has(zombie)) return "continue";
+  bullet.hitZombies.add(zombie);
+  damageZombie(
+    zombie,
+    hitIndex,
+    { angle: bullet.angle ?? Math.atan2(bullet.dy, bullet.dx) },
+    bullet.damage
+  );
+  if ((bullet.pierceLeft ?? 0) <= 0) return "remove";
+  bullet.pierceLeft -= 1;
+  return "continue";
+}
+
+function updateBullets() {
+  const maxStep = 10;
+
+  for (let i = bullets.length - 1; i >= 0; i--) {
+    const b = bullets[i];
+    let remainingX = b.dx * b.speed;
+    let remainingY = b.dy * b.speed;
+    let travelLeft = Math.hypot(remainingX, remainingY);
+
+    if (travelLeft <= 0.001) {
+      bullets.splice(i, 1);
+      continue;
+    }
+
+    let removeBullet = false;
+
+    while (travelLeft > 0.001) {
+      const step = Math.min(maxStep, travelLeft);
+      const ratio = step / travelLeft;
+      const stepX = remainingX * ratio;
+      const stepY = remainingY * ratio;
+
+      b.prevX = b.x;
+      b.prevY = b.y;
+      b.x += stepX;
+      b.y += stepY;
+      remainingX -= stepX;
+      remainingY -= stepY;
+      travelLeft -= step;
+
+      if (Math.hypot(b.x - b.prevX, b.y - b.prevY) > 0.35) {
+        pushBulletAfterglow(b.prevX, b.prevY, b.x, b.y, b.color);
+      }
+
+      if (b.x < 0 || b.y < 0 || b.x > WORLD_WIDTH || b.y > WORLD_HEIGHT) {
+        removeBullet = true;
+        break;
+      }
+
+      const hitIndex = findBulletHitZombieIndex(b);
+      if (hitIndex < 0) continue;
+
+      const result = processBulletHit(b, hitIndex);
+      if (result === "remove") {
+        removeBullet = true;
+        break;
+      }
+    }
+
+    if (removeBullet) bullets.splice(i, 1);
+  }
+}
+
 function damageZombie(zombie, index, hitInfo, bulletDamage) {
-  const baseDamage = Math.round((bulletDamage ?? player.damage) * getRunDamageMult());
+  const baseDamage = Math.max(
+    1,
+    Math.round((bulletDamage ?? player.damage) * getRunDamageMult())
+  );
   const isCrit = rollCritHit();
   const damage = isCrit ? Math.max(1, Math.round(baseDamage * 1.8)) : baseDamage;
   const hpBefore = zombie.hp;
@@ -8302,47 +8380,7 @@ function update() {
   updatePlayerBombs();
   updatePlayerMolotovs();
   updateMolotovFireZones();
-
-
-
-  for (let i = bullets.length - 1; i >= 0; i--) {
-    const b = bullets[i];
-    b.prevX = b.x;
-    b.prevY = b.y;
-    b.x += b.dx * b.speed;
-    b.y += b.dy * b.speed;
-
-    if (Math.hypot(b.x - b.prevX, b.y - b.prevY) > 0.5) {
-      pushBulletAfterglow(b.prevX, b.prevY, b.x, b.y, b.color);
-    }
-
-    if (
-      b.x < 0 ||
-      b.y < 0 ||
-      b.x > WORLD_WIDTH ||
-      b.y > WORLD_HEIGHT
-    ) {
-      bullets.splice(i, 1);
-      continue;
-    }
-
-    const hitIndex = findBulletHitZombieIndex(b);
-    if (hitIndex >= 0) {
-      const z = zombies[hitIndex];
-      if (!b.hitZombies) b.hitZombies = new Set();
-      if (b.hitZombies.has(z)) {
-        bullets.splice(i, 1);
-        continue;
-      }
-      b.hitZombies.add(z);
-      damageZombie(z, hitIndex, { angle: b.angle ?? Math.atan2(b.dy, b.dx) }, b.damage);
-      if ((b.pierceLeft ?? 0) <= 0) {
-        bullets.splice(i, 1);
-      } else {
-        b.pierceLeft -= 1;
-      }
-    }
-  }
+  updateBullets();
 
   for (let i = zombies.length - 1; i >= 0; i--) {
     const z = zombies[i];
@@ -8856,48 +8894,65 @@ function ensureRenderLoop() {
 
 if (c) {
 
+  c.addEventListener("contextmenu", (e) => e.preventDefault());
+
+  function aimFromClient(clientX, clientY) {
+    const view = clientToView(clientX, clientY);
+    const world = screenToWorld(view.x, view.y);
+    mouseTarget.x = world.x;
+    mouseTarget.y = world.y;
+    return world;
+  }
+
+  function tryShootAtTarget() {
+    if (!canPlayerShoot()) return false;
+    if (player.shootCooldown > 0) return false;
+    shootAt(mouseTarget.x, mouseTarget.y);
+    player.shootCooldown = getShootCooldown();
+    return true;
+  }
+
   c.addEventListener("click", shoot);
 
-  c.addEventListener("mousedown", (e) => {
+  c.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0) return;
     resumeAudio();
     if (!canPlayerShoot()) return;
 
-    const view = clientToView(e.clientX, e.clientY);
-    const world = screenToWorld(view.x, view.y);
-
-    mouseTarget.x = world.x;
-
-    mouseTarget.y = world.y;
-
-    isMouseDown = true;
-
-    if (player.shootCooldown <= 0) {
-      shootAt(mouseTarget.x, mouseTarget.y);
-      player.shootCooldown = getShootCooldown();
+    if (typeof c.setPointerCapture === "function") {
+      try {
+        c.setPointerCapture(e.pointerId);
+      } catch (error) {
+        // Ignore capture failures on unsupported browsers.
+      }
     }
 
+    aimFromClient(e.clientX, e.clientY);
+    isMouseDown = true;
+    tryShootAtTarget();
+  });
+
+  c.addEventListener("pointermove", (e) => {
+    if (!isMouseDown && e.buttons !== 1) return;
+    aimFromClient(e.clientX, e.clientY);
+  });
+
+  c.addEventListener("pointerup", (e) => {
+    if (typeof c.hasPointerCapture === "function" && c.hasPointerCapture(e.pointerId)) {
+      c.releasePointerCapture(e.pointerId);
+    }
+    isMouseDown = false;
+  });
+
+  c.addEventListener("pointercancel", () => {
+    isMouseDown = false;
   });
 
   c.addEventListener("mousemove", (e) => {
-
-    const view = clientToView(e.clientX, e.clientY);
-    const world = screenToWorld(view.x, view.y);
-
-    mouseTarget.x = world.x;
-
-    mouseTarget.y = world.y;
-
+    aimFromClient(e.clientX, e.clientY);
   });
 
 }
-
-
-
-window.addEventListener("mouseup", () => {
-
-  isMouseDown = false;
-
-});
 
 
 
