@@ -4372,9 +4372,11 @@ function getDifficultyTier() {
 
 
 function screenToWorld(screenX, screenY) {
-
+  const shake = typeof getShakeOffset === "function" ? getShakeOffset() : { x: 0, y: 0 };
+  if (window.ISO_VIEW_ENABLED && typeof isoScreenToWorld === "function") {
+    return isoScreenToWorld(screenX, screenY, camera, shake);
+  }
   return { x: screenX + camera.x, y: screenY + camera.y };
-
 }
 
 function clientToView(clientX, clientY) {
@@ -6822,10 +6824,16 @@ function drawSpriteSheet(sheet, frame, cx, cy, size, angle, options = {}) {
   const squashX = options.squashX ?? 1;
   const drawW = sheet.frameWidth * scale * squashX;
   const drawH = sheet.frameHeight * scale;
+  const drawAngle =
+    window.ISO_VIEW_ENABLED && typeof getIsoSpriteAngle === "function"
+      ? getIsoSpriteAngle(angle)
+      : angle || 0;
+  const drawCy =
+    window.ISO_VIEW_ENABLED && typeof getIsoSpriteLift === "function" ? cy - getIsoSpriteLift(size) : cy;
 
   ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate(angle || 0);
+  ctx.translate(cx, drawCy);
+  ctx.rotate(drawAngle);
   ctx.imageSmoothingEnabled = true;
   ctx.drawImage(
     sheet.img,
@@ -7172,6 +7180,10 @@ function drawHealthBar(cx, top, hp, maxHp, options = {}) {
 }
 
 function drawEntityShadow(cx, cy, size) {
+  if (window.ISO_VIEW_ENABLED && typeof drawIsoEntityBase === "function") {
+    drawIsoEntityBase(cx, cy, size);
+    return;
+  }
   ctx.fillStyle = "rgba(0,0,0,0.42)";
   ctx.beginPath();
   ctx.ellipse(cx, cy + size * 0.14, size * 0.36, size * 0.13, 0, 0, Math.PI * 2);
@@ -7229,6 +7241,26 @@ function drawGrassField(theme) {
     groundCache = { ready: true, canvas: buildGroundCanvas(theme) };
   }
   ctx.drawImage(groundCache.canvas, 0, 0);
+
+  if (window.ISO_VIEW_ENABLED) {
+    const step = 96;
+    ctx.strokeStyle = theme.grid || "rgba(180,230,200,0.12)";
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = 0.16;
+    for (let x = 0; x <= WORLD_WIDTH; x += step) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, WORLD_HEIGHT);
+      ctx.stroke();
+    }
+    for (let y = 0; y <= WORLD_HEIGHT; y += step) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(WORLD_WIDTH, y);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
 }
 
 function drawWorldBackground(theme) {
@@ -7259,6 +7291,102 @@ function drawViewportVignette() {
   ctx.fillRect(0, 0, w, h);
 }
 
+function drawZombieEntity(z, theme) {
+  const cx = z.x + z.size / 2;
+  const cy = z.y + z.size / 2;
+  const isWaveBoss = z.tier === "waveBoss" || z.isWaveBoss;
+  const archetypeDef = z.archetype ? ARCHETYPE_DEFS[z.archetype] : null;
+  const sheet = (z.animTick || 0) > 0 ? zombieSprites.move : zombieSprites.idle;
+
+  drawArchetypeTint(z, cx, cy);
+  drawArchetypeTelegraph(z, cx, cy);
+  if (z.golden) {
+    ctx.save();
+    ctx.globalAlpha = 0.24;
+    ctx.fillStyle = "#ffd54a";
+    ctx.beginPath();
+    ctx.arc(cx, cy, z.size * 0.46, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  if (
+    !drawSpriteWithGlow(
+      sheet,
+      z.animFrame || 0,
+      cx,
+      cy,
+      z.size,
+      z.facingAngle || 0,
+      isWaveBoss ? "#d050ff" : z.golden ? "#ffd54a" : archetypeDef?.glow || theme.zombieGlow,
+      isWaveBoss
+        ? { blur: 26, alpha: 0.52 }
+        : z.golden
+          ? { blur: 18, alpha: 0.45 }
+          : archetypeDef
+            ? { blur: 16, alpha: 0.38 }
+            : undefined
+    )
+  ) {
+    drawEntityShadow(cx, cy, z.size);
+    ctx.fillStyle = isWaveBoss
+      ? "#7a0f7a"
+      : z.tier === "boss"
+        ? "#6a0dad"
+        : z.tier === "medium"
+          ? "purple"
+          : z.tier === "tank"
+            ? "#c45c00"
+            : "red";
+    ctx.fillRect(z.x, z.y, z.size, z.size);
+  }
+
+  const barTop = z.y - 2;
+  const barWidth = Math.max(34, z.size * 0.62);
+  const isElite =
+    isWaveBoss || z.tier === "boss" || z.tier === "medium" || z.tier === "tank";
+  let barColor = theme.accent;
+  if (isWaveBoss) barColor = "#d77bff";
+  else if (z.tier === "boss") barColor = "#b86cff";
+  else if (z.tier === "tank") barColor = "#ffb054";
+  else if (z.tier === "medium") barColor = "#a98cff";
+
+  drawHealthBar(cx, barTop, z.hp, z.maxHp || Math.max(z.hp, 1), {
+    width: barWidth,
+    height: isWaveBoss ? 6 : 4,
+    color: barColor,
+    showText: true,
+    label: isWaveBoss
+      ? `BOSS P${z.bossPhase || 1} ${Math.max(0, Math.ceil(z.hp))}`
+      : z.archetype
+        ? `${ARCHETYPE_DEFS[z.archetype]?.label || ""} ${Math.max(0, Math.ceil(z.hp))}`
+        : `${Math.max(0, Math.ceil(z.hp))}`,
+    fontSize: isWaveBoss ? 10 : isElite ? 9 : 8
+  });
+}
+
+function drawSortedEntities(theme) {
+  if (!window.ISO_VIEW_ENABLED || typeof getIsoSortDepth !== "function") {
+    drawPlayer(theme);
+    zombies.forEach((z) => drawZombieEntity(z, theme));
+    return;
+  }
+
+  const drawables = [
+    {
+      depth: getIsoSortDepth(player.x + PLAYER_SIZE * 0.5, player.y + PLAYER_SIZE),
+      draw: () => drawPlayer(theme)
+    },
+    ...zombies.map((z) => ({
+      depth: getIsoSortDepth(z.x + z.size * 0.5, z.y + z.size),
+      draw: () => drawZombieEntity(z, theme)
+    }))
+  ];
+
+  drawables.sort((a, b) => a.depth - b.depth);
+  drawables.forEach((entry) => entry.draw());
+}
+
 function draw() {
 
   if (!ctx || !c) return;
@@ -7268,13 +7396,18 @@ function draw() {
 
 
   ctx.clearRect(0, 0, VIEW_WIDTH, VIEW_HEIGHT);
+  if (window.ISO_VIEW_ENABLED && typeof fillIsoBackdrop === "function") {
+    fillIsoBackdrop(ctx, VIEW_WIDTH, VIEW_HEIGHT);
+  }
 
   ctx.save();
 
   const shake = typeof getShakeOffset === "function" ? getShakeOffset() : { x: 0, y: 0 };
-  ctx.translate(-camera.x + shake.x, -camera.y + shake.y);
-
-
+  if (window.ISO_VIEW_ENABLED && typeof applyIsoWorldTransform === "function") {
+    applyIsoWorldTransform(ctx, camera, shake);
+  } else {
+    ctx.translate(-camera.x + shake.x, -camera.y + shake.y);
+  }
 
   drawWorldBackground(theme);
 
@@ -7284,88 +7417,12 @@ function draw() {
 
   drawHpPickups();
 
-  drawPlayer(theme);
+  drawSortedEntities(theme);
 
   drawPlayerBombs();
 
   drawFloatingTexts();
   drawZombieProjectiles();
-
-  zombies.forEach((z) => {
-    const cx = z.x + z.size / 2;
-    const cy = z.y + z.size / 2;
-    const isWaveBoss = z.tier === "waveBoss" || z.isWaveBoss;
-    const archetypeDef = z.archetype ? ARCHETYPE_DEFS[z.archetype] : null;
-    const sheet = (z.animTick || 0) > 0 ? zombieSprites.move : zombieSprites.idle;
-
-    drawArchetypeTint(z, cx, cy);
-    drawArchetypeTelegraph(z, cx, cy);
-    if (z.golden) {
-      ctx.save();
-      ctx.globalAlpha = 0.24;
-      ctx.fillStyle = "#ffd54a";
-      ctx.beginPath();
-      ctx.arc(cx, cy, z.size * 0.46, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
-
-    if (
-      !drawSpriteWithGlow(
-        sheet,
-        z.animFrame || 0,
-        cx,
-        cy,
-        z.size,
-        z.facingAngle || 0,
-        isWaveBoss ? "#d050ff" : z.golden ? "#ffd54a" : archetypeDef?.glow || theme.zombieGlow,
-        isWaveBoss
-          ? { blur: 26, alpha: 0.52 }
-          : z.golden
-            ? { blur: 18, alpha: 0.45 }
-            : archetypeDef
-              ? { blur: 16, alpha: 0.38 }
-              : undefined
-      )
-    ) {
-      drawEntityShadow(cx, cy, z.size);
-      ctx.fillStyle = isWaveBoss
-        ? "#7a0f7a"
-        : z.tier === "boss"
-          ? "#6a0dad"
-          : z.tier === "medium"
-            ? "purple"
-            : z.tier === "tank"
-              ? "#c45c00"
-              : "red";
-      ctx.fillRect(z.x, z.y, z.size, z.size);
-    }
-
-    const barTop = z.y - 2;
-    const barWidth = Math.max(34, z.size * 0.62);
-    const isElite =
-      isWaveBoss || z.tier === "boss" || z.tier === "medium" || z.tier === "tank";
-    let barColor = theme.accent;
-    if (isWaveBoss) barColor = "#d77bff";
-    else if (z.tier === "boss") barColor = "#b86cff";
-    else if (z.tier === "tank") barColor = "#ffb054";
-    else if (z.tier === "medium") barColor = "#a98cff";
-
-    drawHealthBar(cx, barTop, z.hp, z.maxHp || Math.max(z.hp, 1), {
-      width: barWidth,
-      height: isWaveBoss ? 6 : 4,
-      color: barColor,
-      showText: true,
-      label: isWaveBoss
-        ? `BOSS P${z.bossPhase || 1} ${Math.max(0, Math.ceil(z.hp))}`
-        : z.archetype
-          ? `${ARCHETYPE_DEFS[z.archetype]?.label || ""} ${Math.max(0, Math.ceil(z.hp))}`
-          : `${Math.max(0, Math.ceil(z.hp))}`,
-      fontSize: isWaveBoss ? 10 : isElite ? 9 : 8
-    });
-  });
-
-
 
   drawBulletAfterglows();
   drawMuzzleTracers();
